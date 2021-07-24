@@ -10,7 +10,9 @@ import json
 import time
 import re
 
-test_in_anki = False
+# TODO: better progress dialog lol
+
+test_in_anki = True
 
 if test_in_anki:
     from PyQt5.QtWidgets import *
@@ -34,20 +36,18 @@ if test_in_anki:
         keybinding = ""  # nothing by default
         force_update = "no"
 
-# site2 = 'https://jisho.org/search/{}'.format(urllib.parse.quote(term))
 # site3 = 'http://www.weblio.jp/content/'.format(urllib.parse.quote(term))
 
-sample_vocab = '自業' #自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+# sample_vocab = '自業' #自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
 
 # https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
-# removes latin and hiragana text
 def extract_kanji(text):
     """
     returns a unique set of Kanji extracted from the vocab
+    also removes latin and hiragana text
     """
     kanji_only_set = re.findall(r'[\u4e00-\u9fff]+', text)
     kanji_only_set = ''.join(kanji_only_set)
-    # print(set(kanji_only_set))
     return set(kanji_only_set)
 
 # print(extract_kanji(sample_vocab))
@@ -104,14 +104,13 @@ def extract_etymology(kanji_set):
             #     decomposition = ''
 
             if etymology:
-                # NOTE: you might want to change \n to <br> for Anki HTML
-                add_str = kanji + ': ' + etymology + '\n'
+                add_str = kanji + ': ' + etymology + '<br>'
                 full_etymology_list += add_str
 
-    print(full_etymology_list)
+    # print(full_etymology_list)
     return full_etymology_list
 
-extract_etymology(extract_kanji(sample_vocab))
+# extract_etymology(extract_kanji(sample_vocab))
 
 
 if test_in_anki:
@@ -201,34 +200,41 @@ if test_in_anki:
 
                     return
 
-    def setup_menu(ed):
-        """
-        Add entry in Edit menu
-        """
-        a = QAction(label_menu, ed)
-        a.triggered.connect(lambda _, e=ed: on_regen_vocab(e))
-        ed.form.menuEdit.addAction(a)
-        a.setShortcut(QKeySequence(keybinding))
+
+# text shown while processing cards
+label_progress_update = 'Scraping Kanji Etymologies From dong-chinese'
+# text shown on menu to run the functions
+label_menu = 'Extract Kanji from Vocab, and fetch etymologies into Kanji_Etym'
 
 
-    def add_to_context_menu(view, menu):
-        """
-        Add entry to context menu (right click)
-        """
-        menu.addSeparator()
-        a = menu.addAction(label_menu)
-        a.triggered.connect(lambda _, e=view: on_regen_vocab(e))
-        a.setShortcut(QKeySequence(keybinding))
+def setup_menu(ed):
+    """
+    Add entry in Edit menu
+    """
+    a = QAction(label_menu, ed)
+    a.triggered.connect(lambda _, e=ed: on_regen_vocab(e))
+    ed.form.menuEdit.addAction(a)
+    a.setShortcut(QKeySequence(keybinding))
 
 
-    def on_regen_vocab(ed):
-        """
-        main function
-        """
-        regen = Regen(ed, ed.selectedNotes())
-        regen.generate()
-        mw.reset()
-        mw.requireReset()
+def add_to_context_menu(view, menu):
+    """
+    Add entry to context menu (right click)
+    """
+    menu.addSeparator()
+    a = menu.addAction(label_menu)
+    a.triggered.connect(lambda _, e=view: on_regen_vocab(e))
+    a.setShortcut(QKeySequence(keybinding))
 
-    addHook('browser.setupMenus', setup_menu)
-    addHook('browser.onContextMenu', add_to_context_menu)
+
+def on_regen_vocab(ed):
+    """
+    main function
+    """
+    regen = Regen(ed, ed.selectedNotes())
+    regen.generate()
+    mw.reset()
+    mw.requireReset()
+
+addHook('browser.setupMenus', setup_menu)
+addHook('browser.onContextMenu', add_to_context_menu)
