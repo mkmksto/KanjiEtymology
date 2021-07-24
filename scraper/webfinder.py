@@ -11,6 +11,7 @@ import time
 import re
 
 # TODO: better progress dialog lol
+# TODO: empty vocab fields sometimes makes it crash
 
 test_in_anki = True
 
@@ -154,11 +155,18 @@ if test_in_anki:
             fs = [mw.col.getNote(id=fid) for fid in self.fids]
 
             for f in fs:
-                # empty sentence field (probably very rare)
+                # empty vocab field
                 if not f[vocab_field]:
+                    self._update_progress()
                     continue
 
                 vocab = str(f[vocab_field])
+
+                etymology = extract_etymology(extract_kanji(vocab))
+                # the vocab might not contain any Kanji AT ALL
+                if not etymology:
+                    self._update_progress()
+                    continue
 
                 try:
                     # kanji etymology field already contains something
@@ -170,12 +178,12 @@ if test_in_anki:
 
                     # kanji etym field is empty, fill it
                     elif not f[kanji_etym_field]:
-                        f[kanji_etym_field] = extract_etymology(extract_kanji(vocab))
+                        f[kanji_etym_field] = etymology
                         self._update_progress()
                         mw.progress.finish()
 
                     elif force_update == 'yes' and f[kanji_etym_field]:
-                        f[kanji_etym_field] += extract_etymology(extract_kanji(vocab))
+                        f[kanji_etym_field] += etymology
                         self._update_progress()
                         mw.progress.finish()
 
