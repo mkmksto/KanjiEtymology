@@ -12,6 +12,7 @@ import re
 
 # TODO: better progress dialog lol
 # TODO: empty vocab fields sometimes makes it crash
+# TODO: doesn't handle 'https://www.dong-chinese.com/dictionary/search/%E8%81%B4', i.e. Japanese variant
 
 test_in_anki = True
 
@@ -39,7 +40,7 @@ if test_in_anki:
 
 # site3 = 'http://www.weblio.jp/content/'.format(urllib.parse.quote(term))
 
-# sample_vocab = '自業' #自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+sample_vocab = '統聴業夢' #自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
 
 # https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
 def extract_kanji(text):
@@ -47,9 +48,12 @@ def extract_kanji(text):
     returns a unique set of Kanji extracted from the vocab
     also removes latin and hiragana text
     """
-    kanji_only_set = re.findall(r'[\u4e00-\u9fff]+', text)
-    kanji_only_set = ''.join(kanji_only_set)
-    return set(kanji_only_set)
+    if text:
+        kanji_only_set = re.findall(r'[\u4e00-\u9fff]+', text)
+        kanji_only_set = ''.join(kanji_only_set)
+        return set(kanji_only_set)
+    else:
+        return set()
 
 # print(extract_kanji(sample_vocab))
 
@@ -83,6 +87,15 @@ def extract_etymology(kanji_set):
         soup = BeautifulSoup(response, features='html.parser')
         soup_text = str(soup)
 
+        # get definition
+        # there are multiple things enclosed in <p class="MuiTypography-root MuiTypography-body2">
+        # but only two are enclosed in <p class="MuiTypography-root MuiTypography-body2"><span><span><span>
+        # it's always the second that is the definition (usually a list separated by ";" then by ","
+        # soup.find_all('<p class="MuiTypography-root MuiTypography-body2"><span><span><span>')
+        #
+        # soup_definition_only = soup_text.split('<p class="MuiTypography-root MuiTypography-body2"><span><span><span>')
+        # print(soup_definition_only)
+
         # get only the relevant JS part of dong-chinese which is formatted as a JSON
         soup_text = soup_text.split('<script>window["')[-1].split('__sink__charData_')[-1].split(']=')[-1]
         # returns a pure JSON object
@@ -94,24 +107,73 @@ def extract_etymology(kanji_set):
         if not(dong_text_not_found in soup_text):
             # turn into JSON and parse
             soup_json = json.loads(soup_text)
+
             try:
                 etymology = soup_json['hint']
             # usually KeyError
             except Exception as e:
                 etymology = ''
-            # try:
-            #     decomposition = soup_json['components']
-            # except Exception as e:
-            #     decomposition = ''
+
+            try:
+                # <div class="MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12" style="padding:8px">
+                definition = soup.find('div',
+                                       attrs={'class': 'MuiGrid-root MuiGrid-item MuiGrid-grid-xs-12',
+                                              'style': 'padding:8px'}
+                                       )
+                definition = str(definition).split('<span><span><span>')[-1].split('</span></span><a href=')[0]
+
+                # get only one keyword from the many keywords separated by ; and or ,
+                if ';' in definition:
+                    definition = definition.split('; ')[0]
+                    if ',' in definition:
+                        definition = definition.split(', ')[0]
+                elif ',' in definition:
+                    definition = definition.split(', ')[0]
+
+            except Exception as e:
+                definition = ''
+
+            try:
+                decomposition = soup_json['components']
+            except Exception as e:
+                decomposition = ''
+
+
+            # concatenate the strings
+            full_etymology_list += kanji
+
+            if definition:
+                add_str = '({}): '.format(definition)
+                full_etymology_list += add_str
+            else:
+                full_etymology_list += ': '
 
             if etymology:
-                add_str = kanji + ': ' + etymology + '<br>'
-                full_etymology_list += add_str
+                full_etymology_list += etymology
+
+            # decomposition is a list of DICT objects
+            # e.g. "components":[  {"character":"木","type":["iconic"],"hint":null},
+            # {"character":"◎","type":["iconic"],"hint":"Depicts roots."}   ]
+            if decomposition:
+                # decom_json_list = [json.loads(decom) for decom in decomposition]
+                for decom in decomposition:
+                    char = str(decom['character'])
+                    func = str(decom['type'])
+                    hint = str(decom['hint'])
+
+                    add_str_decom = ' [{}-{}-{}]'.format(char, func, hint)
+                    full_etymology_list += add_str_decom
+
+            # \n when testing inside pycharm, <br> when inside Anki
+            if test_in_anki:
+                full_etymology_list += '<br>'
+            else:
+                full_etymology_list += '\n'
 
     # print(full_etymology_list)
     return full_etymology_list
 
-# extract_etymology(extract_kanji(sample_vocab))
+print(extract_etymology(extract_kanji(sample_vocab)))
 
 
 if test_in_anki:
@@ -152,6 +214,9 @@ if test_in_anki:
                 return
 
         def generate(self):
+            """
+            Generate Kanji Etymology strings
+            """
             fs = [mw.col.getNote(id=fid) for fid in self.fids]
 
             for f in fs:
@@ -209,40 +274,40 @@ if test_in_anki:
                     return
 
 
-# text shown while processing cards
-label_progress_update = 'Scraping Kanji Etymologies From dong-chinese'
-# text shown on menu to run the functions
-label_menu = 'Extract Kanji from Vocab, and fetch etymologies into Kanji_Etym'
+    # text shown while processing cards
+    label_progress_update = 'Scraping Kanji Etymologies From dong-chinese'
+    # text shown on menu to run the functions
+    label_menu = 'Extract Kanji from Vocab, and fetch etymologies into Kanji_Etym'
 
 
-def setup_menu(ed):
-    """
-    Add entry in Edit menu
-    """
-    a = QAction(label_menu, ed)
-    a.triggered.connect(lambda _, e=ed: on_regen_vocab(e))
-    ed.form.menuEdit.addAction(a)
-    a.setShortcut(QKeySequence(keybinding))
+    def setup_menu(ed):
+        """
+        Add entry in Edit menu
+        """
+        a = QAction(label_menu, ed)
+        a.triggered.connect(lambda _, e=ed: on_regen_vocab(e))
+        ed.form.menuEdit.addAction(a)
+        a.setShortcut(QKeySequence(keybinding))
 
 
-def add_to_context_menu(view, menu):
-    """
-    Add entry to context menu (right click)
-    """
-    menu.addSeparator()
-    a = menu.addAction(label_menu)
-    a.triggered.connect(lambda _, e=view: on_regen_vocab(e))
-    a.setShortcut(QKeySequence(keybinding))
+    def add_to_context_menu(view, menu):
+        """
+        Add entry to context menu (right click)
+        """
+        menu.addSeparator()
+        a = menu.addAction(label_menu)
+        a.triggered.connect(lambda _, e=view: on_regen_vocab(e))
+        a.setShortcut(QKeySequence(keybinding))
 
 
-def on_regen_vocab(ed):
-    """
-    main function
-    """
-    regen = Regen(ed, ed.selectedNotes())
-    regen.generate()
-    mw.reset()
-    mw.requireReset()
+    def on_regen_vocab(ed):
+        """
+        main function
+        """
+        regen = Regen(ed, ed.selectedNotes())
+        regen.generate()
+        mw.reset()
+        mw.requireReset()
 
-addHook('browser.setupMenus', setup_menu)
-addHook('browser.onContextMenu', add_to_context_menu)
+    addHook('browser.setupMenus', setup_menu)
+    addHook('browser.onContextMenu', add_to_context_menu)
