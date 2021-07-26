@@ -133,7 +133,8 @@ def extract_etymology(kanji_set):
 
 
             # concatenate the strings
-            full_etymology_list += kanji
+            concat_str = '<b>{}</b>'.format(kanji)
+            full_etymology_list += concat_str
 
             if definition:
                 add_str = '({}): '.format(definition)
@@ -159,7 +160,7 @@ def extract_etymology(kanji_set):
                         func = str(decom['type'])
                     except Exception as e:
                         func = ''
-                        
+
                     try:
                         hint = str(decom['hint'])
                     except:
