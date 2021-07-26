@@ -150,9 +150,20 @@ def extract_etymology(kanji_set):
             if decomposition:
                 # decom_json_list = [json.loads(decom) for decom in decomposition]
                 for decom in decomposition:
-                    char = str(decom['character'])
-                    func = str(decom['type'])
-                    hint = str(decom['hint'])
+                    try:
+                        char = str(decom['character'])
+                    except Exception as e:
+                        char =''
+
+                    try:
+                        func = str(decom['type'])
+                    except Exception as e:
+                        func = ''
+                        
+                    try:
+                        hint = str(decom['hint'])
+                    except:
+                        hint = ''
 
                     add_str_decom = ' [{}-{}-{}]'.format(char, func, hint)
                     full_etymology_list += add_str_decom
