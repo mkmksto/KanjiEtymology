@@ -3,6 +3,7 @@
 # License: GNU AGPL, version 3 or later; https://www.gnu.org/licenses/agpl-3.0.en.html
 
 from bs4 import BeautifulSoup
+from collections import OrderedDict
 
 import urllib.request
 import urllib.parse
@@ -45,15 +46,16 @@ sample_vocab = '統聴業夢' #自得だと思わないか' #！夢この前、�
 # https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
 def extract_kanji(text):
     """
-    returns a unique set of Kanji extracted from the vocab
+    returns a unique set/list of Kanji extracted from the vocab
     also removes latin and hiragana text
+    https://stackoverflow.com/questions/480214/how-do-you-remove-duplicates-from-a-list-whilst-preserving-order
     """
     if text:
         kanji_only_set = re.findall(r'[\u4e00-\u9fff]+', text)
         kanji_only_set = ''.join(kanji_only_set)
-        return set(kanji_only_set)
+        return list(OrderedDict.fromkeys(kanji_only_set))
     else:
-        return set()
+        return []
 
 # print(extract_kanji(sample_vocab))
 
@@ -86,15 +88,6 @@ def extract_etymology(kanji_set):
 
         soup = BeautifulSoup(response, features='html.parser')
         soup_text = str(soup)
-
-        # get definition
-        # there are multiple things enclosed in <p class="MuiTypography-root MuiTypography-body2">
-        # but only two are enclosed in <p class="MuiTypography-root MuiTypography-body2"><span><span><span>
-        # it's always the second that is the definition (usually a list separated by ";" then by ","
-        # soup.find_all('<p class="MuiTypography-root MuiTypography-body2"><span><span><span>')
-        #
-        # soup_definition_only = soup_text.split('<p class="MuiTypography-root MuiTypography-body2"><span><span><span>')
-        # print(soup_definition_only)
 
         # get only the relevant JS part of dong-chinese which is formatted as a JSON
         soup_text = soup_text.split('<script>window["')[-1].split('__sink__charData_')[-1].split(']=')[-1]
