@@ -14,6 +14,7 @@ import re
 # TODO: better progress dialog lol
 # TODO: empty vocab fields sometimes makes it crash
 # TODO: doesn't handle 'https://www.dong-chinese.com/dictionary/search/%E8%81%B4', i.e. Japanese variant
+# TODO: add option to use this site instead: https://okjiten.jp/ (way better etymologies)
 
 test_in_anki = True
 
