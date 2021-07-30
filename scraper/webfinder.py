@@ -11,12 +11,14 @@ import json
 import time
 import re
 
+import ssl
+
 # TODO: better progress dialog lol
 # TODO: empty vocab fields sometimes makes it crash
 # TODO: doesn't handle 'https://www.dong-chinese.com/dictionary/search/%E8%81%B4', i.e. Japanese variant
 # TODO: add option to use this site instead: https://okjiten.jp/ (way better etymologies)
 
-test_in_anki = True
+test_in_anki = False
 
 if test_in_anki:
     from PyQt5.QtWidgets import *
@@ -40,9 +42,6 @@ if test_in_anki:
         keybinding = ""  # nothing by default
         force_update = "no"
 
-# site3 = 'http://www.weblio.jp/content/'.format(urllib.parse.quote(term))
-
-sample_vocab = '統聴業夢' #自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
 
 # https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
 def extract_kanji(text):
@@ -58,11 +57,9 @@ def extract_kanji(text):
     else:
         return []
 
-# print(extract_kanji(sample_vocab))
-
-def extract_etymology(kanji_set):
+def dong_etymology(kanji_set):
     """
-    Usage: extract_etymology(extract_kanji(sample_vocab))
+    Usage: dong_etymology(extract_kanji(sample_vocab))
     Returns a Single string separated by break lines of all etymologies of the kanji set it is fed
 
     Args:
@@ -77,6 +74,7 @@ def extract_etymology(kanji_set):
         site = 'https://www.dong-chinese.com/dictionary/{}'.format(urllib.parse.quote(kanji.encode('utf-8')))
 
         # try waiting for a while if website returns an error
+        response = ''
         try:
             response = urllib.request.urlopen(site)
         except Exception as e:
@@ -179,8 +177,47 @@ def extract_etymology(kanji_set):
     # print(full_etymology_list)
     return full_etymology_list
 
-print(extract_etymology(extract_kanji(sample_vocab)))
+def okjiten_etymology(kanji_set):
+    """
+        Usage: okjiten_etymology(extract_kanji(sample_vocab))
+        Returns a Single string separated by break lines of all etymologies of the kanji set it is fed
 
+        Args:
+            List/Set of Kanji
+        Returns:
+            String of Etymologies per Kanji
+        """
+    num_retries = 10  # retries per term
+    full_etymology_list = ''
+    for kanji in kanji_set:
+        sites= [
+            'https://okjiten.jp/10-jyouyoukanjiitiran.html',
+            'https://okjiten.jp/8-jouyoukanjigai.html (kanken pre-1 and 1)',
+            'https://okjiten.jp/9-jinmeiyoukanji.html']
+
+        # site = 'https://www.google.com/search?q=site:okjiten.jp {}'.format(urllib.parse.quote_plus(kanji.encode('utf-8')))
+        # site = 'https://okjiten.jp/10-jyouyoukanjiitiran.html'
+
+        for site in sites:
+
+            # try waiting for a while if website returns an error
+            response = ''
+            try:
+                response = urllib.request.urlopen(site)
+
+            except Exception as e:
+                for i in range(num_retries):
+                    try:
+                        response = urllib.request.urlopen(site)
+                    except Exception as e:
+                        time.sleep(0.1)
+
+            soup = BeautifulSoup(response, features='html.parser')
+            if kanji in str(soup):
+                pass
+                # stop for site in sites loop
+
+            print(soup)
 
 if test_in_anki:
 
@@ -233,7 +270,7 @@ if test_in_anki:
 
                 vocab = str(f[vocab_field])
 
-                etymology = extract_etymology(extract_kanji(vocab))
+                etymology = dong_etymology(extract_kanji(vocab))
                 # the vocab might not contain any Kanji AT ALL
                 if not etymology:
                     self._update_progress()
@@ -317,3 +354,7 @@ if test_in_anki:
 
     addHook('browser.setupMenus', setup_menu)
     addHook('browser.onContextMenu', add_to_context_menu)
+
+if __name__ == '__main__':
+    sample_vocab = '統聴業夢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+    print(okjiten_etymology(extract_kanji(sample_vocab)))
