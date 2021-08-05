@@ -26,8 +26,9 @@ import ssl
 # inside the json file, if it does exist, skip the URL queries and copy from the JSON file instead
 # the first value should be the site/source, if the kanji and site match -> then skip, if the kanji is found
 # but the site is diff, then still continue with the query then save the result inside the JSON file
+# TODO: check paste image as WEBP to see how he resizes images
 
-test_in_anki = False
+test_in_anki = True
 
 if test_in_anki:
     from PyQt5.QtWidgets import *
@@ -99,17 +100,42 @@ def download_image(online_url, filename):
     https://stackoverflow.com/questions/37158246/how-to-download-images-from-beautifulsoup
     filename: the name of the file to be saved as, usually diff from the online_url because I added a string preceding it
     """
-    try:
-        with open(os.path.join(MEDIA_STORAGE, filename), 'wb') as f:
-            f.write(requests.get(online_url).content)
-    except Exception as e:
-        showInfo('Could not save image {} because {}'.format(filename, e) )
+    complete_file_location = os.path.join(MEDIA_STORAGE, filename)
+    if not os.path.isfile(complete_file_location):
+        try:
+            with open(complete_file_location, 'wb') as f:
+                f.write(requests.get(online_url).content)
+        except Exception as e:
+            showInfo('Could not save image {} because {}'.format(filename, e) )
+    else:
+        print('file already exists')
+        pass
 
 def tangorin_kanji_info(kanji):
     """
+    Usage:
+        To be used inside okjiten_etymology
+    Args:
+        Takes in a single kanji ONLY, not a list
     https://tangorin.com/kanji?search=%E5%8F%82
     """
-    pass
+    response = try_access_site(
+        site='https://tangorin.com/kanji?search={}'.format(urllib.parse.quote(kanji.encode('utf-8')))
+    )
+    soup = BeautifulSoup(response, features='html.parser')
+    en_definitions = soup.find('p', attrs={'class':  'k-meanings'})
+    en_definitions = en_definitions.get_text().strip()
+    try:
+        en_definitions = en_definitions.split('; ')
+        # limit num of definitions to only 3 defs
+        if len(en_definitions) > 3:
+            en_definitions = en_definitions[:3]
+            en_definitions = '; '.join(en_definitions)
+        else:
+            en_definitions = '; '.join(en_definitions)
+    except:
+        pass
+    return en_definitions
 
 def dong_etymology(kanji_set):
     """
@@ -129,15 +155,7 @@ def dong_etymology(kanji_set):
 
         # try waiting for a while if website returns an error
         response = ''
-        try:
-            response = urllib.request.urlopen(site)
-        except Exception as e:
-            for i in range(num_retries):
-                try:
-                    response = urllib.request.urlopen(site)
-                except Exception as e:
-                    time.sleep(0.05)
-
+        response = try_access_site(site=site, sleep_time=0.05)
 
         soup = BeautifulSoup(response, features='html.parser')
         soup_text = str(soup)
@@ -252,9 +270,11 @@ def okjiten_etymology(kanji_set):
             LIST of JSONs/Dicts
             each JSON/dict containing: (as dict properties)
                 name/kanji itself       :   kanji
+                definition              :   kanji definition
                 online image URL        :   online_img_url
                 anki image src URL      :   anki_img_url
                 etymology_text          :   etymology_text
+                src                     :   okijiten (constant) - for use when searching JSON files
                 onyomi
                 kunyomi
                 bushu
@@ -277,13 +297,14 @@ def okjiten_etymology(kanji_set):
 
             soup = BeautifulSoup(response, features='html.parser')
             if kanji in str(soup) and soup:
-                indiv_kanji_info['kanji'] = kanji
                 print('found {} from {}'.format(kanji, site))
 
-                # wrapper_regex = re.compile('<.*?{}.*?>'.format(kanji), flags=re.DOTALL)
+                indiv_kanji_info['kanji']       = kanji
+                indiv_kanji_info['definition']  = (tangorin_kanji_info(kanji))
 
                 # for some stupid reason, it can't match for kanji like 参, but will match its kyuujitai 參
                 # TODO, if exception, try searching for its kyuujitai counterpart, look for a website that does that
+                # or might be nvm because for some reason it werks now
 
                 ### ------------------------ START (1) ------------------------
                 ### (1) scrape the 成り立ち image table
@@ -313,8 +334,9 @@ def okjiten_etymology(kanji_set):
                 image_filename                  = 'okijiten-{}'.format(etymology_image_src)
                 anki_image_src                  = '<img src = "{}">'.format(image_filename)
 
-                indiv_kanji_info['online_img_url']   = etymology_image_url
-                indiv_kanji_info['anki_img_url']     = anki_image_src
+                indiv_kanji_info['image_filename']      = image_filename
+                indiv_kanji_info['online_img_url']      = etymology_image_url
+                indiv_kanji_info['anki_img_url']        = anki_image_src
                 # download_image(online_url=etymology_image_url, filename=image_filename)
                 ### ------------------------ END (1) ------------------------
                 # TODO: scrape the image and put it inside the media folder, try to resize it if u can
@@ -366,7 +388,8 @@ def okjiten_etymology(kanji_set):
                             etymology   = etymology.replace('※', '<br>')  # for anki
                             def_text    += etymology
 
-                indiv_kanji_info['etymology_text'] = def_text
+                indiv_kanji_info['etymology_text']  = def_text
+                indiv_kanji_info['src']             = 'okijiten'
                 ### ------------------------ END (2) ------------------------
 
                 # TODO
@@ -434,9 +457,46 @@ if test_in_anki:
 
                 vocab = str(f[vocab_field])
 
-                etymology = dong_etymology(extract_kanji(vocab))
+                # etymology = dong_etymology(extract_kanji(vocab))
+
+                etym_info_list = okjiten_etymology(extract_kanji(vocab))
+
+                okjiten_str = ''
+
+                # h = header, b = body, f = footer
+                h = '<table class="etym_table">' \
+                        '<tbody>'
+
+                b = ''
+                for etym_info in etym_info_list:
+                    kanji           = etym_info['kanji']
+                    definition      = etym_info['definition']
+                    etymology_text  = etym_info['etymology_text']
+                    anki_img_url    = etym_info['anki_img_url']
+                    online_img_url  = etym_info['online_img_url']
+
+                    image_filename  = etym_info['image_filename']
+
+                    download_image(online_img_url, image_filename)
+
+                    kanji_and_def   = kanji + definition
+
+                    b +=    '<tr>' \
+                                '<td>{}</td>' \
+                                '<td>{}</td>' \
+                                '<td>{}</td>' \
+                            '</tr>'.format(
+                                        kanji_and_def,
+                                        anki_img_url,
+                                        etymology_text
+                                        )
+                f =     '</tbody>' \
+                    '</table>'
+
+                okjiten_str = h + b + f
+
                 # the vocab might not contain any Kanji AT ALL
-                if not etymology:
+                if not okjiten_str:
                     self._update_progress()
                     continue
 
@@ -450,12 +510,12 @@ if test_in_anki:
 
                     # kanji etym field is empty, fill it
                     elif not f[kanji_etym_field]:
-                        f[kanji_etym_field] = etymology
+                        f[kanji_etym_field] = okjiten_str
                         self._update_progress()
                         mw.progress.finish()
 
                     elif force_update == 'yes' and f[kanji_etym_field]:
-                        f[kanji_etym_field] += etymology
+                        f[kanji_etym_field] += okjiten_str
                         self._update_progress()
                         mw.progress.finish()
 
@@ -520,5 +580,5 @@ if test_in_anki:
     addHook('browser.onContextMenu', add_to_context_menu)
 
 if __name__ == '__main__':
-    sample_vocab = '夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+    sample_vocab = '参夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
     pprint(okjiten_etymology(extract_kanji(sample_vocab)))
