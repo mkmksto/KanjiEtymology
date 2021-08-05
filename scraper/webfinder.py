@@ -22,11 +22,12 @@ import ssl
 # TODO: doesn't handle 'https://www.dong-chinese.com/dictionary/search/%E8%81%B4', i.e. Japanese variant
 # TODO: add option to use this site instead: https://okjiten.jp/ (way better etymologies)
 # TODO: kanji decomposition tool (https://characterpop.com/) better: https://hanzicraft.com/character/%E5%AE%89
-# TODO: (VERY IMP) create a JSON cache file, where before querying, the program checks if it already exists
+# TODO: (VERY IMP) priority = 2 create a JSON cache file, where before querying, the program checks if it already exists
 # inside the json file, if it does exist, skip the URL queries and copy from the JSON file instead
 # the first value should be the site/source, if the kanji and site match -> then skip, if the kanji is found
 # but the site is diff, then still continue with the query then save the result inside the JSON file
 # TODO: check paste image as WEBP to see how he resizes images
+# TODO: (VERY IMP) priority = 1, format what is written inside the field as a 2-column table, limit the image column size
 
 test_in_anki = True
 
@@ -52,7 +53,10 @@ if test_in_anki:
         keybinding = ""  # nothing by default
         force_update = "no"
 
-MEDIA_STORAGE = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
+# MEDIA_STORAGE = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
+
+# TODO: FIND THIS DYNAMICALLY BASED ON WHICH PROFILE YOU ARE ON!
+MEDIA_STORAGE = r'C:\Users\Mi\AppData\Roaming\Anki2\subs2srsss\collection.media'
 
 # https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
 def extract_kanji(text):
@@ -106,7 +110,8 @@ def download_image(online_url, filename):
             with open(complete_file_location, 'wb') as f:
                 f.write(requests.get(online_url).content)
         except Exception as e:
-            showInfo('Could not save image {} because {}'.format(filename, e) )
+            # showInfo('Could not save image {} because {}'.format(filename, e) )
+            pass
     else:
         print('file already exists')
         pass
@@ -135,6 +140,7 @@ def tangorin_kanji_info(kanji):
             en_definitions = '; '.join(en_definitions)
     except:
         pass
+    if not en_definitions: en_definitions = ''
     return en_definitions
 
 def dong_etymology(kanji_set):
@@ -327,7 +333,11 @@ def okjiten_etymology(kanji_set):
                     if kanji_soup: break
 
                 etymology_image_src             = kanji_soup.find('img')
-                etymology_image_src             = etymology_image_src.get('src')
+                try:
+                    etymology_image_src         = etymology_image_src.get('src')
+                # AttributeError: 'NoneType' object has no attribute 'get'
+                except Exception as e:
+                    etymology_image_src         = ''
                 etymology_image_url             = 'https://okjiten.jp/{}'.format(etymology_image_src)
 
                 # use image_filename for downloading and storing the media
@@ -406,147 +416,178 @@ def okjiten_etymology(kanji_set):
     # print(result_dict['online_img_url'])
     return result_list
 
-if test_in_anki:
 
-    class Regen():
-        """Used to organize the work flow to update the selected cards
-           Attributes
-           ----------
-           ed :
-               Anki Card browser object
-           fids :
-               List of selected cards
-           completed : int
-               Track how many cards were already processed
-           """
-        def __init__(self, ed, fids):
-            self.ed         = ed
-            # ed.selectedNotes
-            self.fids       = fids
-            self.completed  = 0
-            # self.config     = mw.addonManager.getConfig(__name__)
-            if len(self.fids) == 1:
-                # Single card selected, need to deselect it before updating
-                self.row = self.ed.currentRow()
-                self.ed.form.tableView.selectionModel().clear()
-            mw.progress.start(max=len(self.fids), immediate=True)
-            mw.progress.update(
-                label=label_progress_update,
-                value=0)
+class Regen():
+    """Used to organize the work flow to update the selected cards
+       Attributes
+       ----------
+       ed :
+           Anki Card browser object
+       fids :
+           List of selected cards
+       completed : int
+           Track how many cards were already processed
+       """
+    def __init__(self, ed=None, fids=None):
+        self.ed         = ed
+        # ed.selectedNotes
+        self.fids       = fids
+        self.completed  = 0
+        # self.config     = mw.addonManager.getConfig(__name__)
+        if len(self.fids) == 1:
+            # Single card selected, need to deselect it before updating
+            self.row = self.ed.currentRow()
+            self.ed.form.tableView.selectionModel().clear()
+        mw.progress.start(max=len(self.fids), immediate=True)
+        mw.progress.update(
+            label=label_progress_update,
+            value=0)
 
-        def _update_progress(self):
-            self.completed += 1
-            mw.progress.update(
-                label=label_progress_update,
-                value=self.completed)
-            if self.completed >= len(self.fids):
-                mw.progress.finish()
-                return
+    def _update_progress(self):
+        self.completed += 1
+        mw.progress.update(
+            label=label_progress_update,
+            value=self.completed)
+        if self.completed >= len(self.fids):
+            mw.progress.finish()
+            return
 
-        def generate(self):
-            """
-            Generate Kanji Etymology strings
-            """
+    def generate(self):
+        """
+        Generate Kanji Etymology strings
+        """
+
+        if not __name__ == '__main__':
             fs = [mw.col.getNote(id=fid) for fid in self.fids]
+        else:
+            # if run inside pycharm, self.finds would be a list of vocab
+            # fs = [fid for fid in self.fids]
+            pass
 
-            for f in fs:
+        for f in fs:
+            if not __name__ == '__main__':
                 # empty vocab field
                 if not f[vocab_field]:
+                    # self._update_progress()
+                    continue
+            else:
+                # vocab = f['vocab_field']
+                pass
+
+
+            vocab = str(f[vocab_field])
+
+            # etymology = dong_etymology(extract_kanji(vocab))
+
+            etym_info_list = okjiten_etymology(extract_kanji(vocab))
+
+            okjiten_str = ''
+
+            for etym_info in etym_info_list:
+                kanji           = etym_info['kanji']
+                definition      = etym_info['definition']
+                etymology_text  = etym_info['etymology_text']
+                anki_img_url    = etym_info['anki_img_url']
+                online_img_url  = etym_info['online_img_url']
+
+                image_filename  = etym_info['image_filename']
+
+                kanji_and_def = '{}({})'.format(kanji, definition)
+
+                download_image(online_img_url, image_filename)
+
+                okjiten_str += '{} | {} | {}<br>'.format(kanji_and_def, anki_img_url, etymology_text)
+
+            # # h = header, b = body, f = footer
+            # h =  """<table class="etym_table">
+            #             <tbody>"""
+            #
+            # b = ''
+            # for etym_info in etym_info_list:
+            #     kanji           = etym_info['kanji']
+            #     definition      = etym_info['definition']
+            #     etymology_text  = etym_info['etymology_text']
+            #     anki_img_url    = etym_info['anki_img_url']
+            #     online_img_url  = etym_info['online_img_url']
+            #
+            #     image_filename  = etym_info['image_filename']
+            #
+            #     download_image(online_img_url, image_filename)
+            #
+            #     kanji_and_def   = kanji + definition
+            #
+            #     b +=    """"
+            #             <tr>
+            #                 <td>{}</td>
+            #                 <td>{}</td>
+            #                 <td>{}</td>
+            #             </tr>""".format(
+            #                         kanji_and_def,
+            #                         anki_img_url,
+            #                         etymology_text
+            #                         )
+            # f =     """</tbody>
+            #     </table>"""
+            #
+            # okjiten_str = h + b + f
+
+            # if __name__ == '__main__':
+            #     return okjiten_str
+
+            okjiten_str = okjiten_str.replace(r'\n', '').strip()
+
+            # the vocab might not contain any Kanji AT ALL
+            if not okjiten_str:
+                self._update_progress()
+                continue
+
+            try:
+                # kanji etymology field already contains something
+                if force_update == 'no' and f[kanji_etym_field]:
+                    # do nothing, count it as progress
                     self._update_progress()
+                    # mw.progress.finish()
                     continue
 
-                vocab = str(f[vocab_field])
-
-                # etymology = dong_etymology(extract_kanji(vocab))
-
-                etym_info_list = okjiten_etymology(extract_kanji(vocab))
-
-                okjiten_str = ''
-
-                # h = header, b = body, f = footer
-                h = '<table class="etym_table">' \
-                        '<tbody>'
-
-                b = ''
-                for etym_info in etym_info_list:
-                    kanji           = etym_info['kanji']
-                    definition      = etym_info['definition']
-                    etymology_text  = etym_info['etymology_text']
-                    anki_img_url    = etym_info['anki_img_url']
-                    online_img_url  = etym_info['online_img_url']
-
-                    image_filename  = etym_info['image_filename']
-
-                    download_image(online_img_url, image_filename)
-
-                    kanji_and_def   = kanji + definition
-
-                    b +=    '<tr>' \
-                                '<td>{}</td>' \
-                                '<td>{}</td>' \
-                                '<td>{}</td>' \
-                            '</tr>'.format(
-                                        kanji_and_def,
-                                        anki_img_url,
-                                        etymology_text
-                                        )
-                f =     '</tbody>' \
-                    '</table>'
-
-                okjiten_str = h + b + f
-
-                # the vocab might not contain any Kanji AT ALL
-                if not okjiten_str:
+                # kanji etym field is empty, fill it
+                elif not f[kanji_etym_field]:
+                    f[kanji_etym_field] = okjiten_str
                     self._update_progress()
-                    continue
+                    # mw.progress.finish()
 
-                try:
-                    # kanji etymology field already contains something
-                    if force_update == 'no' and f[kanji_etym_field]:
-                        # do nothing, count it as progress
-                        self._update_progress()
-                        mw.progress.finish()
-                        continue
+                elif force_update == 'yes' and f[kanji_etym_field]:
+                    f[kanji_etym_field] += okjiten_str
+                    self._update_progress()
+                    # mw.progress.finish()
 
-                    # kanji etym field is empty, fill it
-                    elif not f[kanji_etym_field]:
-                        f[kanji_etym_field] = okjiten_str
-                        self._update_progress()
-                        mw.progress.finish()
-
-                    elif force_update == 'yes' and f[kanji_etym_field]:
-                        f[kanji_etym_field] += okjiten_str
-                        self._update_progress()
-                        mw.progress.finish()
-
-                    else:
-                        pass
-
-                except Exception as e:
-                    showInfo('error from generate() function, - {}'.format(str(e)))
-
-                try:
-                    f.flush()
-                except Exception as e:
+                else:
                     pass
 
-                # just a fail-safe
-                if self.completed >= len(self.fids):
-                    mw.progress.finish()
-                    showInfo('Extraction done for {} out of {} notes done'.format(
-                                                                            self.completed,
-                                                                            len(self.fids)
-                                                                            ))
+            except Exception as e:
+                showInfo('error from generate() function, - {}'.format(str(e)))
 
-                    return
+            try:
+                f.flush()
+            except Exception as e:
+                pass
+
+            # just a fail-safe
+            if self.completed >= len(self.fids):
+                mw.progress.finish()
+                showInfo('Extraction done for {} out of {} notes done'.format(
+                                                                        self.completed,
+                                                                        len(self.fids)
+                                                                        ))
+
+                return
 
 
-    # text shown while processing cards
-    label_progress_update = 'Scraping Kanji Etymologies From dong-chinese'
-    # text shown on menu to run the functions
-    label_menu = 'Extract Kanji from Vocab, and fetch etymologies into Kanji_Etym'
+# text shown while processing cards
+label_progress_update = 'Scraping Kanji Etymologies From dong-chinese'
+# text shown on menu to run the functions
+label_menu = 'Extract Kanji from Vocab, and fetch etymologies into Kanji_Etym'
 
-
+if test_in_anki:
     def setup_menu(ed):
         """
         Add entry in Edit menu
@@ -581,4 +622,9 @@ if test_in_anki:
 
 if __name__ == '__main__':
     sample_vocab = '参夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
-    pprint(okjiten_etymology(extract_kanji(sample_vocab)))
+    # pprint(okjiten_etymology(extract_kanji(sample_vocab)))
+
+    fids = [{'vocab_field': '参夢'},{'vocab_field': '紋脅'}]
+    regen = Regen(fids=fids)
+    res = regen.generate()
+    pprint(res)
