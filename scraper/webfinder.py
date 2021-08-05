@@ -440,13 +440,13 @@ class Regen():
             self.ed.form.tableView.selectionModel().clear()
         mw.progress.start(max=len(self.fids), immediate=True)
         mw.progress.update(
-            label=label_progress_update,
+            label=LABEL_PROGRESS_UPDATE,
             value=0)
 
     def _update_progress(self):
         self.completed += 1
         mw.progress.update(
-            label=label_progress_update,
+            label=LABEL_PROGRESS_UPDATE,
             value=self.completed)
         if self.completed >= len(self.fids):
             mw.progress.finish()
@@ -489,6 +489,12 @@ class Regen():
                 etymology_text  = etym_info['etymology_text']
                 anki_img_url    = etym_info['anki_img_url']
                 online_img_url  = etym_info['online_img_url']
+
+                try:
+                    src = etym_info['src']
+                    LABEL_PROGRESS_UPDATE = '{} from {}'.format(LABEL_PROGRESS_UPDATE, src)
+                except:
+                    pass
 
                 image_filename  = etym_info['image_filename']
 
@@ -583,7 +589,7 @@ class Regen():
 
 
 # text shown while processing cards
-label_progress_update = 'Scraping Kanji Etymologies From dong-chinese'
+LABEL_PROGRESS_UPDATE = 'Scraping Kanji Etymologies'
 # text shown on menu to run the functions
 label_menu = 'Extract Kanji from Vocab, and fetch etymologies into Kanji_Etym'
 
