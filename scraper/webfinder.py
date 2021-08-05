@@ -9,9 +9,11 @@ from pprint import pprint
 
 import urllib.request
 import urllib.parse
+import requests
 import json
 import time
 import re
+import os
 
 import ssl
 
@@ -49,6 +51,7 @@ if test_in_anki:
         keybinding = ""  # nothing by default
         force_update = "no"
 
+MEDIA_STORAGE = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
 
 # https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
 def extract_kanji(text):
@@ -90,6 +93,17 @@ def bs_remove_html(html):
 
     # return data by retrieving the tag content
     return ' '.join(soup.stripped_strings)
+
+def download_image(online_url, filename):
+    """
+    https://stackoverflow.com/questions/37158246/how-to-download-images-from-beautifulsoup
+    filename: the name of the file to be saved as, usually diff from the online_url because I added a string preceding it
+    """
+    try:
+        with open(os.path.join(MEDIA_STORAGE, filename), 'wb') as f:
+            f.write(requests.get(online_url).content)
+    except Exception as e:
+        showInfo('Could not save image {} because {}'.format(filename, e) )
 
 def tangorin_kanji_info(kanji):
     """
@@ -294,11 +308,14 @@ def okjiten_etymology(kanji_set):
                 etymology_image_src             = kanji_soup.find('img')
                 etymology_image_src             = etymology_image_src.get('src')
                 etymology_image_url             = 'https://okjiten.jp/{}'.format(etymology_image_src)
-                anki_image_src                  = '<img src = "{}">'.format(etymology_image_src)
+
+                # use image_filename for downloading and storing the media
+                image_filename                  = 'okijiten-{}'.format(etymology_image_src)
+                anki_image_src                  = '<img src = "{}">'.format(image_filename)
 
                 indiv_kanji_info['online_img_url']   = etymology_image_url
                 indiv_kanji_info['anki_img_url']     = anki_image_src
-
+                # download_image(online_url=etymology_image_url, filename=image_filename)
                 ### ------------------------ END (1) ------------------------
                 # TODO: scrape the image and put it inside the media folder, try to resize it if u can
 
@@ -503,5 +520,5 @@ if test_in_anki:
     addHook('browser.onContextMenu', add_to_context_menu)
 
 if __name__ == '__main__':
-    sample_vocab = '脅統參' #参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+    sample_vocab = '夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
     pprint(okjiten_etymology(extract_kanji(sample_vocab)))
