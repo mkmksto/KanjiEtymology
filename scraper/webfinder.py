@@ -5,6 +5,8 @@
 from bs4 import BeautifulSoup
 from collections import OrderedDict
 
+from pprint import pprint
+
 import urllib.request
 import urllib.parse
 import json
@@ -17,6 +19,11 @@ import ssl
 # TODO: empty vocab fields sometimes makes it crash
 # TODO: doesn't handle 'https://www.dong-chinese.com/dictionary/search/%E8%81%B4', i.e. Japanese variant
 # TODO: add option to use this site instead: https://okjiten.jp/ (way better etymologies)
+# TODO: kanji decomposition tool (https://characterpop.com/) better: https://hanzicraft.com/character/%E5%AE%89
+# TODO: (VERY IMP) create a JSON cache file, where before querying, the program checks if it already exists
+# inside the json file, if it does exist, skip the URL queries and copy from the JSON file instead
+# the first value should be the site/source, if the kanji and site match -> then skip, if the kanji is found
+# but the site is diff, then still continue with the query then save the result inside the JSON file
 
 test_in_anki = False
 
@@ -56,6 +63,39 @@ def extract_kanji(text):
         return list(OrderedDict.fromkeys(kanji_only_set))
     else:
         return []
+
+def try_access_site(site, sleep_time=0.1, num_retries=10):
+    response = None
+    try:
+        response = urllib.request.urlopen(site)
+
+    except Exception as e:
+        for i in range(num_retries):
+            try:
+                response = urllib.request.urlopen(site)
+            except Exception as e:
+                time.sleep(sleep_time)
+    finally:
+        return response
+
+def bs_remove_html(html):
+    """
+    https://www.geeksforgeeks.org/remove-all-style-scripts-and-html-tags-using-beautifulsoup/
+    """
+    soup = BeautifulSoup(html, "html.parser")
+
+    for data in soup(['style', 'script']):
+        # Remove tags
+        data.decompose()
+
+    # return data by retrieving the tag content
+    return ' '.join(soup.stripped_strings)
+
+def tangorin_kanji_info(kanji):
+    """
+    https://tangorin.com/kanji?search=%E5%8F%82
+    """
+    pass
 
 def dong_etymology(kanji_set):
     """
@@ -180,44 +220,151 @@ def dong_etymology(kanji_set):
 def okjiten_etymology(kanji_set):
     """
         Usage: okjiten_etymology(extract_kanji(sample_vocab))
-        Returns a Single string separated by break lines of all etymologies of the kanji set it is fed
+
+        Note: this won't return the image itself, only the online source
+        Also, won't return a neat string, you have to format it yourself to turn it into a string
+        why? because the return can be neatly stored in a JSON file for chaching/querying
+
+        you then loop through the result like:
+
+        for res in result_list:
+            kanji       = res['kanji']
+            etymology   = res['etymology_text']
+            etc...
 
         Args:
             List/Set of Kanji
         Returns:
-            String of Etymologies per Kanji
+            LIST of JSONs/Dicts
+            each JSON/dict containing: (as dict properties)
+                name/kanji itself       :   kanji
+                online image URL        :   online_img_url
+                anki image src URL      :   anki_img_url
+                etymology_text          :   etymology_text
+                onyomi
+                kunyomi
+                bushu
         """
-    num_retries = 10  # retries per term
-    full_etymology_list = ''
+
+    result_list = []
+
     for kanji in kanji_set:
         sites= [
             'https://okjiten.jp/10-jyouyoukanjiitiran.html',
-            'https://okjiten.jp/8-jouyoukanjigai.html (kanken pre-1 and 1)',
+            'https://okjiten.jp/8-jouyoukanjigai.html', # (kanken pre-1 and 1)
             'https://okjiten.jp/9-jinmeiyoukanji.html']
 
-        # site = 'https://www.google.com/search?q=site:okjiten.jp {}'.format(urllib.parse.quote_plus(kanji.encode('utf-8')))
-        # site = 'https://okjiten.jp/10-jyouyoukanjiitiran.html'
-
+        indiv_kanji_info = {}
         for site in sites:
 
             # try waiting for a while if website returns an error
             response = ''
-            try:
-                response = urllib.request.urlopen(site)
-
-            except Exception as e:
-                for i in range(num_retries):
-                    try:
-                        response = urllib.request.urlopen(site)
-                    except Exception as e:
-                        time.sleep(0.1)
+            response = try_access_site(site)
 
             soup = BeautifulSoup(response, features='html.parser')
-            if kanji in str(soup):
-                pass
-                # stop for site in sites loop
+            if kanji in str(soup) and soup:
+                indiv_kanji_info['kanji'] = kanji
+                print('found {} from {}'.format(kanji, site))
 
-            print(soup)
+                # wrapper_regex = re.compile('<.*?{}.*?>'.format(kanji), flags=re.DOTALL)
+
+                # for some stupid reason, it can't match for kanji like 参, but will match its kyuujitai 參
+                # TODO, if exception, try searching for its kyuujitai counterpart, look for a website that does that
+
+                ### ------------------------ START (1) ------------------------
+                ### (1) scrape the 成り立ち image table
+
+                found       = soup.find('a', text=kanji)
+                href        = found.get('href') # returns a str
+                href        = 'https://okjiten.jp/{}'.format(href)
+
+                kanji_page  = try_access_site(href)
+                kanji_soup  = BeautifulSoup(kanji_page, features='html.parser')
+
+                # https://github.com/rgamici/anki_plugin_jaja_definitions/blob/master/__init__.py#L86
+                # https://beautiful-soup-4.readthedocs.io/en/latest/
+                # tables will be reused in the other scrapers
+                TABLES = kanji_soup.find_all('td', attrs={'colspan': 12} )
+
+                # len(TABLES) == 3 ALWAYS!
+                for table in TABLES:
+                    kanji_soup = table.find('td', attrs={'height': 100})
+                    if kanji_soup: break
+
+                etymology_image_src             = kanji_soup.find('img')
+                etymology_image_src             = etymology_image_src.get('src')
+                etymology_image_url             = 'https://okjiten.jp/{}'.format(etymology_image_src)
+                anki_image_src                  = '<img src = "{}">'.format(etymology_image_src)
+
+                indiv_kanji_info['online_img_url']   = etymology_image_url
+                indiv_kanji_info['anki_img_url']     = anki_image_src
+
+                ### ------------------------ END (1) ------------------------
+                # TODO: scrape the image and put it inside the media folder, try to resize it if u can
+
+
+                ### ------------------------ START (2) ------------------------
+                ### (2) scrape the 成り立ち text table / usually https://okjiten.jp/{}#a
+                # do a findall and the etym text is always the 3rd table row from the top, etc., this is always the same
+                # the 3rd table - TABLES[2] always contains the main content
+
+                main_body = TABLES[2]
+                th = main_body.find('th', attrs={'align': 'left'})
+
+                def_text = ''
+                if th:
+                    th          = BeautifulSoup(str(th), features='html.parser')
+                    etymology   = th.get_text().strip()
+                    etymology   = ''.join(etymology.split())
+                    etymology   = etymology.replace('※', '<br>') # for anki
+
+                    def_text    += etymology
+
+                else:
+                    # there are cases where len(th)==0, usually it uses a td instead of a th
+                    # sample: https://okjiten.jp/kanji1408.html(脅)
+                    # in such cases, just go through every tr, and find what is relevant
+
+                    # http://nihongo.monash.edu/kanjitypes.html (6 kanji types) (only 4 are on the site)
+                    kanji_class = [
+                        '象形文字',  # pictographs/hieroglyphs
+                        '指事文字',  # "logograms", "simple ideographs", representation of abstract ideas
+                        '会意文字',  # compound ideograph e.g. 休 (rest) from 人 (person) and 木 (tree
+                        '会意兼形声文字',  # compound ideo + phono-semantic at the same time
+                        '形声文字',  # semasio-phonetic"
+                        '国字',  # check last, not usually found at the start of the sentence, but inside
+                         ]
+
+                    tr = main_body.find_all('tr')
+                    # tr[7] is usually the .gif for the etymology image, tr[8] is etymology text
+
+                    if tr:
+                        etymology = tr[8]
+
+                        etymology = BeautifulSoup(str(etymology), features='html.parser')
+                        etymology = etymology.get_text().strip()
+
+                        if any(class_ in etymology for class_ in kanji_class):
+                            etymology   = ''.join(etymology.split())
+                            etymology   = etymology.replace('※', '<br>')  # for anki
+                            def_text    += etymology
+
+                indiv_kanji_info['etymology_text'] = def_text
+                ### ------------------------ END (2) ------------------------
+
+                # TODO
+                ### (3) scrape the 読み table / usually https://okjiten.jp/{}#b
+                # TODO
+                ### (4) scrape the 部首 table / usually https://okjiten.jp/{}#c
+
+                # break out for site for sites loop -> if kanji in str(soup) and soup:
+                # because if the kanji is inside the site, no need to go over the other sites
+                # as such this for loop only runs one if the kanji is within the site at first try
+                result_list.append(indiv_kanji_info)
+                break
+
+    # print(result_dict['online_img_url'])
+    return result_list
 
 if test_in_anki:
 
@@ -356,5 +503,5 @@ if test_in_anki:
     addHook('browser.onContextMenu', add_to_context_menu)
 
 if __name__ == '__main__':
-    sample_vocab = '統聴業夢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
-    print(okjiten_etymology(extract_kanji(sample_vocab)))
+    sample_vocab = '脅統參' #参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+    pprint(okjiten_etymology(extract_kanji(sample_vocab)))
