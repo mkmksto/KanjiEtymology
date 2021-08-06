@@ -484,7 +484,7 @@ class Regen():
 
             okjiten_str = ''
 
-            for index, etym_info in enumerate(etym_info_list):
+            for index, etym_info in enumerate(etym_info_list, start=1):
                 kanji           = etym_info['kanji']
                 definition      = etym_info['definition']
                 etymology_text  = etym_info['etymology_text']
