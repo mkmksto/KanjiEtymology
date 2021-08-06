@@ -7,6 +7,8 @@ from collections import OrderedDict
 
 from pprint import pprint
 
+from .consts import LABEL_PROGRESS_UPDATE, LABEL_MENU
+
 import urllib.request
 import urllib.parse
 import requests
@@ -260,7 +262,9 @@ def okjiten_etymology(kanji_set):
     """
         Usage: okjiten_etymology(extract_kanji(sample_vocab))
 
-        Note: this won't return the image itself, only the online source
+        Note: this won't return the image itself, only the online source and its anki src format
+        You'll have to use download_image() wherever your main funciton is
+
         Also, won't return a neat string, you have to format it yourself to turn it into a string
         why? because the return can be neatly stored in a JSON file for chaching/querying
 
@@ -596,17 +600,12 @@ class Regen():
                 return
 
 
-# text shown while processing cards
-LABEL_PROGRESS_UPDATE = 'Scraping Kanji Etymologies'
-# text shown on menu to run the functions
-label_menu = 'Extract Kanji from Vocab, and fetch etymologies into Kanji_Etym'
-
 if test_in_anki:
     def setup_menu(ed):
         """
         Add entry in Edit menu
         """
-        a = QAction(label_menu, ed)
+        a = QAction(LABEL_MENU, ed)
         a.triggered.connect(lambda _, e=ed: on_regen_vocab(e))
         ed.form.menuEdit.addAction(a)
         a.setShortcut(QKeySequence(keybinding))
@@ -617,7 +616,7 @@ if test_in_anki:
         Add entry to context menu (right click)
         """
         menu.addSeparator()
-        a = menu.addAction(label_menu)
+        a = menu.addAction(LABEL_MENU)
         a.triggered.connect(lambda _, e=view: on_regen_vocab(e))
         a.setShortcut(QKeySequence(keybinding))
 
