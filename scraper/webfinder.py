@@ -42,6 +42,7 @@ if test_in_anki:
     from aqt.utils import showInfo
     from aqt import mw
 
+    # TODO: move to config.py
     try:
         config = mw.addonManager.getConfig(dir_path)
         expression_field = config['expressionField']
@@ -58,8 +59,9 @@ if test_in_anki:
 
 # MEDIA_STORAGE = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
 
-# TODO: FIND THIS DYNAMICALLY BASED ON WHICH PROFILE YOU ARE ON!
-MEDIA_STORAGE = r'C:\Users\Mi\AppData\Roaming\Anki2\subs2srsss\collection.media'
+# TODO: (VERY IMPORTANT) priority = 1 FIND THIS DYNAMICALLY BASED ON WHICH PROFILE YOU ARE ON!
+# TODO: move to config.py
+MEDIA_STORAGE = r'C:\Users\Mi\AppData\Roaming\Anki2\User 1\collection.media'
 
 # https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
 def extract_kanji(text):
