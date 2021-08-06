@@ -26,11 +26,11 @@ import os
 # the first value should be the site/source, if the kanji and site match -> then skip, if the kanji is found
 # but the site is diff, then still continue with the query then save the result inside the JSON file
 # TODO: check paste image as WEBP to see how he resizes images
-# TODO: (VERY IMP) priority = 1, format what is written inside the field as a 2-column table, limit the image column size
 # TODO: priority = 3, create another menu bar menu which adds the option to choose whether to scrape from dong or okjiten
 # DO something like regen.generate() requires another argument, source
 # regen.generate(source='okjiten') would go to another menu option, so would source='dongchinese'
 # TODO: search pycharm how to convert functions into a module
+# TODO: priority = 4, dynamically determine kanji_etym_field, if Dong menu is selected Set etym field to dong
 
 test_in_anki = True
 
@@ -52,7 +52,7 @@ if test_in_anki:
         expression_field = 'Reading'
         vocab_field = "Vocab"
         # create this in ANKI!
-        kanji_etym_field = "Kanji_Etym"
+        kanji_etym_field = "Okjiten_Kanji_Etym"
         keybinding = ""  # nothing by default
         force_update = "no"
 
@@ -637,7 +637,7 @@ if __name__ == '__main__':
     sample_vocab = '参夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
     # pprint(okjiten_etymology(extract_kanji(sample_vocab)))
 
-    fids = [{'vocab_field': '参夢'},{'vocab_field': '紋脅'}]
-    regen = Regen(fids=fids)
-    res = regen.generate()
-    pprint(res)
+    # fids = [{'vocab_field': '参夢'},{'vocab_field': '紋脅'}]
+    # regen = Regen(fids=fids)
+    # res = regen.generate()
+    # pprint(res)
