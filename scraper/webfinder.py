@@ -15,12 +15,9 @@ import time
 import re
 import os
 
-import ssl
-
 # TODO: better progress dialog lol
 # TODO: empty vocab fields sometimes makes it crash
 # TODO: doesn't handle 'https://www.dong-chinese.com/dictionary/search/%E8%81%B4', i.e. Japanese variant
-# TODO: add option to use this site instead: https://okjiten.jp/ (way better etymologies)
 # TODO: kanji decomposition tool (https://characterpop.com/) better: https://hanzicraft.com/character/%E5%AE%89
 # TODO: (VERY IMP) priority = 2 create a JSON cache file, where before querying, the program checks if it already exists
 # inside the json file, if it does exist, skip the URL queries and copy from the JSON file instead
@@ -28,6 +25,10 @@ import ssl
 # but the site is diff, then still continue with the query then save the result inside the JSON file
 # TODO: check paste image as WEBP to see how he resizes images
 # TODO: (VERY IMP) priority = 1, format what is written inside the field as a 2-column table, limit the image column size
+# TODO: priority = 3, create another menu bar menu which adds the option to choose whether to scrape from dong or okjiten
+# DO something like regen.generate() requires another argument, source
+# regen.generate(source='okjiten') would go to another menu option, so would source='dongchinese'
+# TODO: search pycharm how to convert functions into a module
 
 test_in_anki = True
 
@@ -483,7 +484,7 @@ class Regen():
 
             okjiten_str = ''
 
-            for etym_info in etym_info_list:
+            for index, etym_info in enumerate(etym_info_list):
                 kanji           = etym_info['kanji']
                 definition      = etym_info['definition']
                 etymology_text  = etym_info['etymology_text']
@@ -502,7 +503,12 @@ class Regen():
 
                 download_image(online_img_url, image_filename)
 
-                okjiten_str += '{} | {} | {}<br>'.format(kanji_and_def, anki_img_url, etymology_text)
+                # use <pseudo-newline> for JS-splitting inside anki because I already use <br> inside
+                # etymology_text  = etym_info['etymology_text'] to replace the character '※'
+                if index < len(etym_info_list):
+                    okjiten_str += '{} | {} | {}<pseudo-newline>'.format(kanji_and_def, anki_img_url, etymology_text)
+                elif index == len(etym_info_list):
+                    okjiten_str += '{} | {} | {}'.format(kanji_and_def, anki_img_url, etymology_text)
 
             # # h = header, b = body, f = footer
             # h =  """<table class="etym_table">
@@ -537,8 +543,10 @@ class Regen():
             #
             # okjiten_str = h + b + f
 
+
             # if __name__ == '__main__':
             #     return okjiten_str
+
 
             okjiten_str = okjiten_str.replace(r'\n', '').strip()
 
