@@ -2,8 +2,6 @@
 # Copyright: Tanaka Aiko (https://github.com/aiko-tanaka)
 # License: GNU AGPL, version 3 or later; https://www.gnu.org/licenses/agpl-3.0.en.html
 
-import logging
-import sys
 
 from functools import wraps
 # from time import time
@@ -13,7 +11,11 @@ from bs4 import BeautifulSoup
 
 import urllib.request
 import urllib.parse
+
+import logging
+import random
 import time
+import sys
 import re
 import os
 
@@ -126,7 +128,10 @@ def extract_kanji(text: str) -> list:
         return []
 
 
-def try_access_site(site, sleep_time=0.1, num_retries=10):
+def try_access_site(site, sleep_time=0.08, num_retries=10):
+
+    time_margin = 0.02
+
     response = None
     try:
         response = urllib.request.urlopen(site)
@@ -135,7 +140,10 @@ def try_access_site(site, sleep_time=0.1, num_retries=10):
         for i in range(num_retries):
             try:
                 response = urllib.request.urlopen(site)
-            except Exception as e:
+            except:
+                # does something like random.uniform(0.06, 0.10)
+                sleep_time = random.uniform(sleep_time - time_margin,
+                                            sleep_time + time_margin)
                 time.sleep(sleep_time)
     finally:
         return response
