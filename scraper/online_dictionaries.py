@@ -146,7 +146,7 @@ def dong_etymology(kanji_set):
             # \n when testing inside pycharm, <br> when inside Anki
 
             full_etymology_list += '<br>'
-            if __name__ == '__main__'
+            if __name__ == '__main__':
                 full_etymology_list += '\n'
 
     # print(full_etymology_list)
