@@ -3,6 +3,7 @@
 # License: GNU AGPL, version 3 or later; https://www.gnu.org/licenses/agpl-3.0.en.html
 
 from .consts import LABEL_PROGRESS_UPDATE, LABEL_MENU
+from .config import config
 
 from collections import OrderedDict
 from bs4 import BeautifulSoup
@@ -39,33 +40,19 @@ from aqt import mw
 # TODO: priority = 4, dynamically determine kanji_etym_field, if Dong menu is selected Set etym field to dong
 
 
-# TODO: move to config.py
-try:
-    config = mw.addonManager.getConfig(dir_path)
-    expression_field = config['expressionField']
-    vocab_field = config['vocabField']
-    keybinding = config['keybinding'] #nothing by default
-except Exception as e:
-    # I use Reading instead of expression because it's the reading
-    # I enclose in <b>'s to save time (do not delete this comment!)
-    expression_field = 'Reading'
-    vocab_field = "Vocab"
-    kanji_etym_field = "Okjiten_Kanji_Etym"
-    keybinding = ""  # nothing by default
-    force_update = "no"
+expression_field    = config.get('expression_field')
+vocab_field         = config.get('vocab_field')
+kanji_etym_field    = config.get('kanji_etym_field')
+keybinding          = config.get('keybinding')
+force_update        = config.get('force_update')
 
-# MEDIA_STORAGE = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
 
-# TODO: (VERY IMPORTANT) priority = 1 FIND THIS DYNAMICALLY BASED ON WHICH PROFILE YOU ARE ON!
-# TODO: move to config.py
-MEDIA_STORAGE = r'C:\Users\Mi\AppData\Roaming\Anki2\User 1\collection.media'
-
-# https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
 def extract_kanji(text: str) -> list:
     """
     returns a unique set/list of Kanji extracted from the vocab
     also removes latin and hiragana text
     https://stackoverflow.com/questions/480214/how-do-you-remove-duplicates-from-a-list-whilst-preserving-order
+    https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
     """
     if text:
         kanji_only_set = re.findall(r'[\u4e00-\u9fff]+', text)
@@ -104,12 +91,22 @@ def bs_remove_html(html):
     return ' '.join(soup.stripped_strings)
 
 
-def download_image(online_url, filename):
+def download_image(online_url, filename, use_inside_anki=True):
     """
     https://stackoverflow.com/questions/37158246/how-to-download-images-from-beautifulsoup
-    filename: the name of the file to be saved as, usually diff from the online_url because I added a string preceding it
+    Args:
+        filename:   the name of the file to be saved as,
+                    usually diff from the online_url because I added a string preceding it
     """
-    complete_file_location = os.path.join(MEDIA_STORAGE, filename)
+
+    # had to use mw.col.media.dir() inside a function because mw.col.media.dir() is called
+    # at runtime when Anki starts, and since mw isn't loaded yet, it'll cause an error (not media method for NoneType)
+    if use_inside_anki:
+        current_col_media_path = mw.col.media.dir() or r'C:\Users\Mi\AppData\Roaming\Anki2\User 1\collection.media'
+    else:
+        current_col_media_path = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
+
+    complete_file_location = os.path.join(current_col_media_path, filename)
     if not os.path.isfile(complete_file_location):
         try:
             with open(complete_file_location, 'wb') as f:
@@ -140,7 +137,6 @@ def tangorin_kanji_info(kanji: str):
         To be used inside okjiten_etymology
     Args:
         Takes in a single kanji ONLY, not a list
-    https://tangorin.com/kanji?search=%E5%8F%82
     """
     response = try_access_site(site='https://tangorin.com/kanji?search={}'
                                .format(urllib.parse.quote(kanji.encode('utf-8'))))
@@ -150,7 +146,7 @@ def tangorin_kanji_info(kanji: str):
 
     try:
         en_definitions = en_definitions.split('; ')
-        # limit num of definitions to only 3 defs
+        # limit num of definitions to only 3 definitions
         if len(en_definitions) > 3:
             en_definitions = en_definitions[:3]
             en_definitions = '; '.join(en_definitions)
@@ -173,7 +169,6 @@ def dong_etymology(kanji_set):
     Returns:
         String of Etymologies per Kanji
     """
-    num_retries = 10  # retries per term
     full_etymology_list = ''
     for kanji in kanji_set:
 
@@ -339,7 +334,6 @@ def okjiten_etymology(kanji_set: list) -> list:
         indiv_kanji_info = {}
         for site in sites:
 
-            # try waiting for a while if website returns an error
             response = ''
             response = try_access_site(site)
 
@@ -371,7 +365,7 @@ def okjiten_etymology(kanji_set: list) -> list:
 
                 # len(TABLES) == 3 ALWAYS!
                 for table in TABLES:
-                    kanji_soup = table.find('td', attrs={'height': 100})
+                    kanji_soup = table.find('td', attrs={'height': 100} )
                     if kanji_soup: break
 
                 etymology_image_src             = kanji_soup.find('img')
@@ -425,8 +419,8 @@ def okjiten_etymology(kanji_set: list) -> list:
                         '会意文字',  # compound ideograph e.g. 休 (rest) from 人 (person) and 木 (tree
                         '会意兼形声文字',  # compound ideo + phono-semantic at the same time
                         '形声文字',  # semasio-phonetic"
-                        '国字',  # check last, not usually found at the start of the sentence, but inside
-                         ]
+                        '国字' ]  # check last, not usually found at the start of the sentence, but inside
+
 
                     tr = main_body.find_all('tr')
                     # tr[7] is usually the .gif for the etymology image, tr[8] is etymology text
@@ -478,7 +472,6 @@ class Regen:
         # ed.selectedNotes
         self.fids       = fids
         self.completed  = 0
-        # self.config     = mw.addonManager.getConfig(__name__)
         if len(self.fids) == 1:
             # Single card selected, need to deselect it before updating
             self.row = self.ed.currentRow()

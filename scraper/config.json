@@ -1,0 +1,10 @@
+{
+    "kanji_etym_field":         "Okjiten_Kanji_Etym",
+    "dong_kanji_etym_field":    "Dong_Kanji_Etym",
+    "expression_field":         "Reading",
+    "vocab_field":              "Vocab",
+    "force_update":             "no",
+    "update_separator":         "<br>",
+    "keybinding":               "",
+    "error_tag":                "KanjiEtymError"
+}
