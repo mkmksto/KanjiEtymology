@@ -2,10 +2,10 @@
 # Copyright: Tanaka Aiko (https://github.com/aiko-tanaka)
 # License: GNU AGPL, version 3 or later; https://www.gnu.org/licenses/agpl-3.0.en.html
 
-from bs4 import BeautifulSoup
-from collections import OrderedDict
-
 from .consts import LABEL_PROGRESS_UPDATE, LABEL_MENU
+
+from collections import OrderedDict
+from bs4 import BeautifulSoup
 
 import urllib.request
 import urllib.parse
@@ -14,6 +14,14 @@ import json
 import time
 import re
 import os
+
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from anki.hooks import addHook
+from aqt.utils import showInfo
+from aqt import mw
+
 
 # TODO: better progress dialog lol
 # TODO: empty vocab fields sometimes makes it crash
@@ -31,13 +39,6 @@ import os
 # TODO: priority = 4, dynamically determine kanji_etym_field, if Dong menu is selected Set etym field to dong
 
 
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from anki.hooks import addHook
-from aqt.utils import showInfo
-from aqt import mw
-
 # TODO: move to config.py
 try:
     config = mw.addonManager.getConfig(dir_path)
@@ -46,10 +47,9 @@ try:
     keybinding = config['keybinding'] #nothing by default
 except Exception as e:
     # I use Reading instead of expression because it's the reading
-    # I enclose in <b>'s to save time
+    # I enclose in <b>'s to save time (do not delete this comment!)
     expression_field = 'Reading'
     vocab_field = "Vocab"
-    # create this in ANKI!
     kanji_etym_field = "Okjiten_Kanji_Etym"
     keybinding = ""  # nothing by default
     force_update = "no"
@@ -61,7 +61,7 @@ except Exception as e:
 MEDIA_STORAGE = r'C:\Users\Mi\AppData\Roaming\Anki2\User 1\collection.media'
 
 # https://stackoverflow.com/questions/34587346/python-check-if-a-string-contains-chinese-character
-def extract_kanji(text):
+def extract_kanji(text: str) -> list:
     """
     returns a unique set/list of Kanji extracted from the vocab
     also removes latin and hiragana text
@@ -73,6 +73,7 @@ def extract_kanji(text):
         return list(OrderedDict.fromkeys(kanji_only_set))
     else:
         return []
+
 
 def try_access_site(site, sleep_time=0.1, num_retries=10):
     response = None
@@ -88,6 +89,7 @@ def try_access_site(site, sleep_time=0.1, num_retries=10):
     finally:
         return response
 
+
 def bs_remove_html(html):
     """
     https://www.geeksforgeeks.org/remove-all-style-scripts-and-html-tags-using-beautifulsoup/
@@ -100,6 +102,7 @@ def bs_remove_html(html):
 
     # return data by retrieving the tag content
     return ' '.join(soup.stripped_strings)
+
 
 def download_image(online_url, filename):
     """
@@ -130,7 +133,8 @@ def download_image(online_url, filename):
         print('file already exists')
         pass
 
-def tangorin_kanji_info(kanji):
+
+def tangorin_kanji_info(kanji: str):
     """
     Usage:
         To be used inside okjiten_etymology
@@ -138,12 +142,12 @@ def tangorin_kanji_info(kanji):
         Takes in a single kanji ONLY, not a list
     https://tangorin.com/kanji?search=%E5%8F%82
     """
-    response = try_access_site(
-        site='https://tangorin.com/kanji?search={}'.format(urllib.parse.quote(kanji.encode('utf-8')))
-    )
+    response = try_access_site(site='https://tangorin.com/kanji?search={}'
+                               .format(urllib.parse.quote(kanji.encode('utf-8'))))
     soup = BeautifulSoup(response, features='html.parser')
     en_definitions = soup.find('p', attrs={'class':  'k-meanings'})
     en_definitions = en_definitions.get_text().strip()
+
     try:
         en_definitions = en_definitions.split('; ')
         # limit num of definitions to only 3 defs
@@ -154,8 +158,10 @@ def tangorin_kanji_info(kanji):
             en_definitions = '; '.join(en_definitions)
     except:
         pass
+
     if not en_definitions: en_definitions = ''
     return en_definitions
+
 
 def dong_etymology(kanji_set):
     """
@@ -269,7 +275,8 @@ def dong_etymology(kanji_set):
     # print(full_etymology_list)
     return full_etymology_list
 
-def okjiten_json_dict(kanji, save_to_dict=True):
+
+def okjiten_json_dict(kanji: str, save_to_dict=True):
     """
     checks if a certain kanji's okjiten formatting is already inside the JSON dict
     If there is, then return it
@@ -287,7 +294,8 @@ def okjiten_json_dict(kanji, save_to_dict=True):
     else:
         pass
 
-def okjiten_etymology(kanji_set):
+
+def okjiten_etymology(kanji_set: list) -> list:
     """
         Usage: okjiten_etymology(extract_kanji(sample_vocab))
 
@@ -454,16 +462,17 @@ def okjiten_etymology(kanji_set):
 
 
 class Regen:
-    """Used to organize the work flow to update the selected cards
-       Attributes
-       ----------
-       ed :
-           Anki Card browser object
-       fids :
-           List of selected cards
-       completed : int
-           Track how many cards were already processed
-       """
+    """
+    Used to organize the work flow to update the selected cards
+    Attributes
+    ----------
+    ed :
+        Anki Card browser object
+    fids :
+        List of selected cards
+    completed : int
+        Track how many cards were already processed
+    """
     def __init__(self, ed=None, fids=None):
         self.ed         = ed
         # ed.selectedNotes
@@ -479,6 +488,7 @@ class Regen:
             label=LABEL_PROGRESS_UPDATE,
             value=0)
 
+
     def _update_progress(self):
         self.completed += 1
         mw.progress.update(
@@ -487,6 +497,7 @@ class Regen:
         if self.completed >= len(self.fids):
             mw.progress.finish()
             return
+
 
     def generate(self):
         """
