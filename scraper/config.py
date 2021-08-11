@@ -23,6 +23,9 @@ def get_config() -> dict:
 
     cfg['media_debug_folder']: str      = cfg.get('media_debug_folder',
                                                   r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media')
+    cfg['kanji_cache_path']: str        = cfg.get('kanji_cache_path',
+                                                  r'D:\Libraries\Documents\MEGA\MEGAsync\000_JAP')
+    cfg['okjiten_cache_filename']: str  = cfg.get('okjiten_cache_filename', 'okjiten_cache.json')
 
 
     return cfg

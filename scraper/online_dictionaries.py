@@ -7,12 +7,14 @@ Online dictionaries and their respective JSON cache methods (if there are any)
 """
 
 from .utils import try_access_site
+from .config import config
 
 from bs4 import BeautifulSoup
 
 import urllib.request
 import urllib.parse
 import json
+import os
 
 def tangorin_kanji_info(kanji: str):
     """
@@ -153,9 +155,25 @@ def dong_etymology(kanji_set):
     return full_etymology_list
 
 
-def okjiten_json_dict(kanji: str, save_to_dict=True):
+def okjiten_cache(kanji: str = None,
+                  kanji_info_to_save: dict = None,
+                  save_to_dict = False) -> list or None:
     """
     JSON dict cache
+
+    File formatting:
+    The key is the okjiten site index (NOT ANYMORE)
+
+    Just use the kanji itself as the key, they're unique anyway
+    {
+        '夢':     {
+                    'kanji': '夢',
+                    'definition': 'dream',
+                    'online_img_url': ....
+                  },
+        '本':     {'kanji': '本', 'definition': 'book', 'online_img_url': ....}
+        .....
+    }
 
     checks if a certain kanji's okjiten formatting is already inside the JSON dict
     If there is, then return it
@@ -163,15 +181,63 @@ def okjiten_json_dict(kanji: str, save_to_dict=True):
     If there isn't then, wait for the querying to finish and sive it inside the JSON
     Args:
         kanji
-        mode (mode 1 = check, mode 2 = write)
+        kanji_info_to_save: dict of the kanji info to save
+        mode:               (mode 1 = check, mode 2 = write)
     Returns:
-        if mode 1: JSON-formatted okjiten definition
-        if mode 2: none (only saves the JSON to the dictionary)
+        if mode 1:      JSON-formatted okjiten definition
+        if mode 2:      none (only saves the JSON to the dictionary)
     """
+    kanji_cache_path        = config.get('kanji_cache_path')
+    okjiten_cache_filename  = config.get('okjiten_cache_filename')
+
+    # TODO: overwrite specific kanji info if update is set to true
+    force_update            = config.get('force_update')
+    full_path               = os.path.join(kanji_cache_path, okjiten_cache_filename)
+
+    # create a JSON file if it doesn't exist
+    if not os.path.isfile(full_path):
+        with open(full_path, 'w') as fh:
+            json.dump({}, fh)
+
+    # (mode 2)
     if save_to_dict:
-        pass
+        json_formatted_info = {
+            kanji: kanji_info_to_save
+        }
+
+        # https://stackoverflow.com/questions/18980039/how-to-append-in-a-json-file-in-python
+        with open(full_path, 'r', encoding='utf8') as fh:
+            data: dict = json.load(fh)
+
+        data.update(json_formatted_info)
+
+        # https://stackoverflow.com/questions/18337407/saving-utf-8-texts-with-json-dumps-as-utf8-not-as-u-escape-sequence
+        with open(full_path, 'w', encoding='utf8') as fh:
+            json.dump(data,
+                      fh,
+                      indent=4,
+                      ensure_ascii=False,
+                      separators=(',', ': '))
+
+    # (mode 1)
     else:
-        pass
+        # check cache if the kanji exists, if it does, return it
+
+        # the return is none, pass 'True' inside okjiten_cache(save_to_dict)
+        # from where it is called
+        try:
+            with open(full_path, 'r', encoding='utf8') as fh:
+                try:
+                    cache: dict = json.load(fh)
+
+                    result = cache.get(kanji)
+                    return result if result else None
+
+                except json.decoder.JSONDecodeError:
+                    return None
+        except:
+            raise
+
 
 
 def okjiten_etymology(kanji_set: list) -> list:
@@ -211,12 +277,19 @@ def okjiten_etymology(kanji_set: list) -> list:
     result_list = []
 
     for kanji in kanji_set:
+        indiv_kanji_info = dict()
+
+        cache = okjiten_cache(kanji, save_to_dict=False)
+        if cache is not None:
+            indiv_kanji_info = cache
+            result_list.append(indiv_kanji_info)
+            continue
+
         sites= [
             'https://okjiten.jp/10-jyouyoukanjiitiran.html',
             'https://okjiten.jp/8-jouyoukanjigai.html', # (kanken pre-1 and 1)
             'https://okjiten.jp/9-jinmeiyoukanji.html']
 
-        indiv_kanji_info = {}
         for site in sites:
 
             response = ''
@@ -334,7 +407,24 @@ def okjiten_etymology(kanji_set: list) -> list:
                 # because if the kanji is inside the site, no need to go over the other sites
                 # as such this for loop only runs one if the kanji is within the site at first try
                 result_list.append(indiv_kanji_info)
+
+                if cache is None:
+                    okjiten_cache(kanji=kanji,
+                                  kanji_info_to_save=indiv_kanji_info,
+                                  save_to_dict=True)
                 break
 
     # print(result_dict['online_img_url'])
     return result_list
+
+# if __name__ == '__main__':
+#     sample_vocab = '参夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+#     from pprint import pprint
+    # pprint(okjiten_etymology(extract_kanji(sample_vocab)))
+
+    # fids = [{'vocab_field': '参夢'},{'vocab_field': '紋脅'}]
+    # regen = Regen(fids=fids)
+    # res = regen.generate()
+    # pprint(res)
+
+# okjiten_cache(save_to_dict=False)
