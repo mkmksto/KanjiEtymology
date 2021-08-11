@@ -9,8 +9,11 @@ from functools import wraps
 from collections import OrderedDict
 from bs4 import BeautifulSoup
 
+from aqt import mw
+
 import urllib.request
 import urllib.parse
+import requests
 
 import logging
 import random
@@ -201,3 +204,7 @@ def download_image(online_url, filename, use_inside_anki=True):
     else:
         print('file already exists')
         pass
+
+if __name__ == '__main__':
+    from pprint import pprint
+    pprint(try_access_site(r'https://www.w3schools.com/python/module_random.asp'))
