@@ -2,14 +2,13 @@
 # Copyright: Tanaka Aiko (https://github.com/aiko-tanaka)
 # License: GNU AGPL, version 3 or later; https://www.gnu.org/licenses/agpl-3.0.en.html
 
+from .config import config
 
 from functools import wraps
 # from time import time
 
 from collections import OrderedDict
 from bs4 import BeautifulSoup
-
-from aqt import mw
 
 import urllib.request
 import urllib.parse
@@ -173,16 +172,18 @@ def download_image(online_url, filename, use_inside_anki=True):
     """
     https://stackoverflow.com/questions/37158246/how-to-download-images-from-beautifulsoup
     Args:
-        filename:   the name of the file to be saved as,
-                    usually diff from the online_url because I added a string preceding it
+        filename:           the name of the file to be saved as,
+                            usually diff from the online_url because I added a string preceding it
+        use_inside_anki:    default val= True
+                            Set this to False for testing purposes, when not using inside Anki
     """
 
     # had to use mw.col.media.dir() inside a function because mw.col.media.dir() is called
     # at runtime when Anki starts, and since mw isn't loaded yet, it'll cause an error (not media method for NoneType)
     if use_inside_anki:
-        current_col_media_path = mw.col.media.dir() or r'C:\Users\Mi\AppData\Roaming\Anki2\User 1\collection.media'
+        current_col_media_path = config.get('current_col_media_path')
     else:
-        current_col_media_path = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
+        current_col_media_path = config.get('media_debug_folder')
 
     complete_file_location = os.path.join(current_col_media_path, filename)
 
@@ -191,9 +192,11 @@ def download_image(online_url, filename, use_inside_anki=True):
     if not os.path.isfile(complete_file_location):
         try:
             with open(complete_file_location, 'wb') as f:
+
                 request = None
                 try:
                     request = requests.get(online_url)
+
                 except:
                     for i in range(15):
                         try:
@@ -202,13 +205,15 @@ def download_image(online_url, filename, use_inside_anki=True):
                             sleep_time = random.uniform(sleep_time - time_margin,
                                                         sleep_time + time_margin)
                             time.sleep(sleep_time)
+
                 finally:
-                    if request:
-                        f.write(request.content)
+                    if request: f.write(request.content)
+
 
         except Exception as e:
             # showInfo('Could not save image {} because {}'.format(filename, e) )
             pass
+
     else:
         print('file already exists')
         pass

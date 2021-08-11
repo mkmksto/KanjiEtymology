@@ -142,7 +142,7 @@ class Regen:
 
             try:
                 # kanji etymology field already contains something
-                if force_update == 'no' and f[kanji_etym_field]:
+                if force_update is False and f[kanji_etym_field]:
                     # do nothing, count it as progress
                     self._update_progress()
                     # mw.progress.finish()
@@ -154,8 +154,8 @@ class Regen:
                     self._update_progress()
                     # mw.progress.finish()
 
-                elif force_update == 'yes' and f[kanji_etym_field]:
-                    f[kanji_etym_field] += okjiten_str
+                elif force_update and f[kanji_etym_field]:
+                    f[kanji_etym_field] = okjiten_str
                     self._update_progress()
                     # mw.progress.finish()
 
