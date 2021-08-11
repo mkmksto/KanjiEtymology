@@ -348,7 +348,9 @@ def okjiten_etymology(kanji_set):
                 etymology_image_url             = 'https://okjiten.jp/{}'.format(etymology_image_src)
 
                 # use image_filename for downloading and storing the media
-                image_filename                  = 'okijiten-{}'.format(etymology_image_src)
+                # add _ before img filename before anki keeps deleting these GIFs
+                # could be because I use them inside a JS script
+                image_filename                  = '_okijiten-{}'.format(etymology_image_src)
                 anki_image_src                  = '<img src = "{}">'.format(image_filename)
 
                 indiv_kanji_info['image_filename']      = image_filename
@@ -472,7 +474,7 @@ class Regen():
             pass
 
         for f in fs:
-            if not __name__ == '__main__':
+            if __name__ != '__main__':
                 # empty vocab field
                 if not f[vocab_field]:
                     # self._update_progress()
