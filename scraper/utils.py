@@ -21,6 +21,8 @@ import sys
 import re
 import os
 
+from aqt import mw
+
 
 FORMAT = logging.Formatter('%(levelname)s \t| %(asctime)s: \t%(message)s')
 
@@ -181,7 +183,7 @@ def download_image(online_url, filename, use_inside_anki=True):
     # had to use mw.col.media.dir() inside a function because mw.col.media.dir() is called
     # at runtime when Anki starts, and since mw isn't loaded yet, it'll cause an error (not media method for NoneType)
     if use_inside_anki:
-        current_col_media_path = config.get('current_col_media_path')
+        current_col_media_path = mw.col.media.dir() or r'C:\Users\Mi\AppData\Roaming\Anki2\User 1\collection.media'
     else:
         current_col_media_path = config.get('media_debug_folder')
 

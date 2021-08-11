@@ -23,9 +23,7 @@ def get_config() -> dict:
 
     cfg['media_debug_folder']: str      = cfg.get('media_debug_folder',
                                                   r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media')
-    # not in the JSON file
-    cfg['current_col_media_path']: str  = cfg.get(mw.col.media.dir(),
-                                                 r'C:\Users\Mi\AppData\Roaming\Anki2\User 1\collection.media')
+
 
     return cfg
 
