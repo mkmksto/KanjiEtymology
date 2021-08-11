@@ -48,6 +48,9 @@ def setup_logger(name, log_file, _format=FORMAT, level=logging.DEBUG):
 
     return logger
 
+# TODO: (important) you might want to use requests instead of urllib.request for try_access_site
+# so that download_image can use try_access_site instead of using its own try_acces
+
 # TODO: not yet usable, you should still create a config.py and config.md that pulls things like log path,
 # and other config settings
 
@@ -182,6 +185,9 @@ def download_image(online_url, filename, use_inside_anki=True):
         current_col_media_path = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
 
     complete_file_location = os.path.join(current_col_media_path, filename)
+
+    time_margin = 0.02
+    sleep_time = 0.08
     if not os.path.isfile(complete_file_location):
         try:
             with open(complete_file_location, 'wb') as f:
@@ -189,11 +195,13 @@ def download_image(online_url, filename, use_inside_anki=True):
                 try:
                     request = requests.get(online_url)
                 except:
-                    for i in range(10):
+                    for i in range(15):
                         try:
                             request = requests.get(online_url)
                         except Exception as e:
-                            time.sleep(0.1)
+                            sleep_time = random.uniform(sleep_time - time_margin,
+                                                        sleep_time + time_margin)
+                            time.sleep(sleep_time)
                 finally:
                     if request:
                         f.write(request.content)
