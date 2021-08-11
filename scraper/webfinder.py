@@ -5,8 +5,6 @@
 from bs4 import BeautifulSoup
 from collections import OrderedDict
 
-from pprint import pprint
-
 from .consts import LABEL_PROGRESS_UPDATE, LABEL_MENU
 
 import urllib.request
@@ -32,30 +30,29 @@ import os
 # TODO: search pycharm how to convert functions into a module
 # TODO: priority = 4, dynamically determine kanji_etym_field, if Dong menu is selected Set etym field to dong
 
-test_in_anki = True
 
-if test_in_anki:
-    from PyQt5.QtWidgets import *
-    from PyQt5.QtCore import *
-    from PyQt5.QtGui import *
-    from anki.hooks import addHook
-    from aqt.utils import showInfo
-    from aqt import mw
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from anki.hooks import addHook
+from aqt.utils import showInfo
+from aqt import mw
 
-    # TODO: move to config.py
-    try:
-        config = mw.addonManager.getConfig(dir_path)
-        expression_field = config['expressionField']
-        vocab_field = config['vocabField']
-        keybinding = config['keybinding'] #nothing by default
-    except Exception as e:
-        # expression_field = 'Expression'
-        expression_field = 'Reading'
-        vocab_field = "Vocab"
-        # create this in ANKI!
-        kanji_etym_field = "Okjiten_Kanji_Etym"
-        keybinding = ""  # nothing by default
-        force_update = "no"
+# TODO: move to config.py
+try:
+    config = mw.addonManager.getConfig(dir_path)
+    expression_field = config['expressionField']
+    vocab_field = config['vocabField']
+    keybinding = config['keybinding'] #nothing by default
+except Exception as e:
+    # I use Reading instead of expression because it's the reading
+    # I enclose in <b>'s to save time
+    expression_field = 'Reading'
+    vocab_field = "Vocab"
+    # create this in ANKI!
+    kanji_etym_field = "Okjiten_Kanji_Etym"
+    keybinding = ""  # nothing by default
+    force_update = "no"
 
 # MEDIA_STORAGE = r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media'
 
@@ -82,7 +79,7 @@ def try_access_site(site, sleep_time=0.1, num_retries=10):
     try:
         response = urllib.request.urlopen(site)
 
-    except Exception as e:
+    except:
         for i in range(num_retries):
             try:
                 response = urllib.request.urlopen(site)
@@ -456,7 +453,7 @@ def okjiten_etymology(kanji_set):
     return result_list
 
 
-class Regen():
+class Regen:
     """Used to organize the work flow to update the selected cards
        Attributes
        ----------
@@ -548,44 +545,6 @@ class Regen():
                 elif index == len(etym_info_list):
                     okjiten_str += '{} | {} | {}'.format(kanji_and_def, anki_img_url, etymology_text)
 
-            # # h = header, b = body, f = footer
-            # h =  """<table class="etym_table">
-            #             <tbody>"""
-            #
-            # b = ''
-            # for etym_info in etym_info_list:
-            #     kanji           = etym_info['kanji']
-            #     definition      = etym_info['definition']
-            #     etymology_text  = etym_info['etymology_text']
-            #     anki_img_url    = etym_info['anki_img_url']
-            #     online_img_url  = etym_info['online_img_url']
-            #
-            #     image_filename  = etym_info['image_filename']
-            #
-            #     download_image(online_img_url, image_filename)
-            #
-            #     kanji_and_def   = kanji + definition
-            #
-            #     b +=    """"
-            #             <tr>
-            #                 <td>{}</td>
-            #                 <td>{}</td>
-            #                 <td>{}</td>
-            #             </tr>""".format(
-            #                         kanji_and_def,
-            #                         anki_img_url,
-            #                         etymology_text
-            #                         )
-            # f =     """</tbody>
-            #     </table>"""
-            #
-            # okjiten_str = h + b + f
-
-
-            # if __name__ == '__main__':
-            #     return okjiten_str
-
-
             okjiten_str = okjiten_str.replace(r'\n', '').strip()
 
             # the vocab might not contain any Kanji AT ALL
@@ -634,41 +593,41 @@ class Regen():
                 return
 
 
-if test_in_anki:
-    def setup_menu(ed):
-        """
-        Add entry in Edit menu
-        """
-        a = QAction(LABEL_MENU, ed)
-        a.triggered.connect(lambda _, e=ed: on_regen_vocab(e))
-        ed.form.menuEdit.addAction(a)
-        a.setShortcut(QKeySequence(keybinding))
+def setup_menu(ed):
+    """
+    Add entry in Edit menu
+    """
+    a = QAction(LABEL_MENU, ed)
+    a.triggered.connect(lambda _, e=ed: on_regen_vocab(e))
+    ed.form.menuEdit.addAction(a)
+    a.setShortcut(QKeySequence(keybinding))
 
 
-    def add_to_context_menu(view, menu):
-        """
-        Add entry to context menu (right click)
-        """
-        menu.addSeparator()
-        a = menu.addAction(LABEL_MENU)
-        a.triggered.connect(lambda _, e=view: on_regen_vocab(e))
-        a.setShortcut(QKeySequence(keybinding))
+def add_to_context_menu(view, menu):
+    """
+    Add entry to context menu (right click)
+    """
+    menu.addSeparator()
+    a = menu.addAction(LABEL_MENU)
+    a.triggered.connect(lambda _, e=view: on_regen_vocab(e))
+    a.setShortcut(QKeySequence(keybinding))
 
 
-    def on_regen_vocab(ed):
-        """
-        main function
-        """
-        regen = Regen(ed, ed.selectedNotes())
-        regen.generate()
-        mw.reset()
-        mw.requireReset()
+def on_regen_vocab(ed):
+    """
+    main function
+    """
+    regen = Regen(ed, ed.selectedNotes())
+    regen.generate()
+    mw.reset()
+    mw.requireReset()
 
-    addHook('browser.setupMenus', setup_menu)
-    addHook('browser.onContextMenu', add_to_context_menu)
+addHook('browser.setupMenus', setup_menu)
+addHook('browser.onContextMenu', add_to_context_menu)
 
 if __name__ == '__main__':
     sample_vocab = '参夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+    from pprint import pprint
     # pprint(okjiten_etymology(extract_kanji(sample_vocab)))
 
     # fids = [{'vocab_field': '参夢'},{'vocab_field': '紋脅'}]
