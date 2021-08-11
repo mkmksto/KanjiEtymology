@@ -113,7 +113,19 @@ def download_image(online_url, filename):
     if not os.path.isfile(complete_file_location):
         try:
             with open(complete_file_location, 'wb') as f:
-                f.write(requests.get(online_url).content)
+                request = None
+                try:
+                    request = requests.get(online_url)
+                except:
+                    for i in range(10):
+                        try:
+                            request = requests.get(online_url)
+                        except Exception as e:
+                            time.sleep(0.1)
+                finally:
+                    if request:
+                        f.write(request.content)
+
         except Exception as e:
             # showInfo('Could not save image {} because {}'.format(filename, e) )
             pass
@@ -259,6 +271,24 @@ def dong_etymology(kanji_set):
 
     # print(full_etymology_list)
     return full_etymology_list
+
+def okjiten_json_dict(kanji, save_to_dict=True):
+    """
+    checks if a certain kanji's okjiten formatting is already inside the JSON dict
+    If there is, then return it
+
+    If there isn't then, wait for the querying to finish and sive it inside the JSON
+    Args:
+        kanji
+        mode (mode 1 = check, mode 2 = write)
+    Returns:
+        if mode 1: JSON-formatted okjiten definition
+        if mode 2: none (only saves the JSON to the dictionary)
+    """
+    if save_to_dict:
+        pass
+    else:
+        pass
 
 def okjiten_etymology(kanji_set):
     """
