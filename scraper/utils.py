@@ -5,7 +5,6 @@
 from .config import config
 
 from functools import wraps
-# from time import time
 
 from collections import OrderedDict
 from bs4 import BeautifulSoup
@@ -40,7 +39,8 @@ def setup_logger(name, log_file, _format=FORMAT, level=logging.DEBUG):
         _format:        String format
         level:          DEBUG by default
     """
-    handler = logging.FileHandler(log_file)
+    # https://stackoverflow.com/questions/52896485/python3-logger-unicodeencodeerror
+    handler = logging.FileHandler(log_file, encoding='utf8')
     handler.setFormatter(_format)
 
     logger = logging.getLogger(name)
@@ -54,35 +54,45 @@ def setup_logger(name, log_file, _format=FORMAT, level=logging.DEBUG):
 
 # TODO: not yet usable, you should still create a config.py and config.md that pulls things like log path,
 # and other config settings
-
-# addon_mgr_instance = AddonManager(mw)
-# ADD_ON_PATH = addon_mgr_instance.addonsFolder()
+ADD_ON_PATH = os.path.dirname(__file__)
 # # TODO: dynamically determine the name of the addon instead of r'\push_existing'
-# PUSH_EXISTING_PATH = ADD_ON_PATH + r'\push_existing'
-#
-# if not os.path.exists(PUSH_EXISTING_PATH):
-#     os.makedirs(PUSH_EXISTING_PATH)
-# NEW_PATH = os.path.join(ADD_ON_PATH, 'push_existing')
-# LOG_PATH = os.path.join(NEW_PATH, 'push_existing.log')
+LOG_FOLDER_PATH = ADD_ON_PATH + r'\logging'
+
+if not os.path.exists(LOG_FOLDER_PATH):
+    os.makedirs(LOG_FOLDER_PATH)
+
+NEW_PATH = os.path.join(ADD_ON_PATH, 'logging')
+
+LOG_FILE_PATH = os.path.join(NEW_PATH, 'kanji_etym.log')
 # CALL_LOG_PATH = os.path.join(NEW_PATH, 'debug_call_log.log')
-# # I don't know why, but if you set the name of the logger to main_logger (same as main.py)
-# # logging entries double up
-# speed_logger = setup_logger('speed_logger', LOG_PATH)
-#
-# del addon_mgr_instance
+
+# I don't know why, but if you set the name of the logger to main_logger (same as main.py)
+# logging entries double up
+speed_logger = setup_logger('speed_logger', LOG_FILE_PATH)
 
 
 # https://stackoverflow.com/questions/11731136/python-class-method-decorator-w-self-arguments
 # NOTE: if you wan't to use this decorator on a function, you must enclose the signal in a lambda
 # That way, it passes the function itself as an argument instead of a flag (bool)
+def calculate_time_class_method(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        before = time.time()
+        result = f(*args, **kwargs)
+        elapsed = time.time() - before
+        speed_logger.info('function "{}" took {} seconds'
+                          .format(f.__name__, elapsed))
+        return result
+    return wrap
+
 def calculate_time(f):
     @wraps(f)
     def wrap(*args, **kwargs):
-        before = time()
+        before = time.time()
         result = f(*args, **kwargs)
-        elapsed = time() - before
+        elapsed = time.time() - before
         speed_logger.info('function "{}" took {} seconds | self = {}'
-                          .format(f.__name__, elapsed, args[0].__name__))
+                          .format(f.__name__, elapsed, str(args)))
         return result
     return wrap
 
@@ -220,6 +230,7 @@ def download_image(online_url, filename, use_inside_anki=True):
         print('file already exists')
         pass
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
     # from pprint import pprint
     # pprint(try_access_site(r'https://www.w3schools.com/python/module_random.asp'))
+    print(os.path.dirname(__name__))

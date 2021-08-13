@@ -6,7 +6,7 @@
 Online dictionaries and their respective JSON cache methods (if there are any)
 """
 
-from .utils import try_access_site
+from .utils import try_access_site, calculate_time
 from .config import config
 
 from bs4 import BeautifulSoup
@@ -16,6 +16,7 @@ import urllib.parse
 import json
 import os
 
+@calculate_time
 def tangorin_kanji_info(kanji: str) -> str:
     """
     Usage:
@@ -54,6 +55,7 @@ def tangorin_kanji_info(kanji: str) -> str:
     return en_definitions if en_definitions else ''
 
 
+@calculate_time
 def dong_etymology(kanji_set):
     """
     Usage: dong_etymology(extract_kanji(sample_vocab))
@@ -165,6 +167,7 @@ def dong_etymology(kanji_set):
     return full_etymology_list
 
 
+@calculate_time
 def okjiten_cache(kanji: str = None,
                   kanji_info_to_save: dict = None,
                   save_to_dict = False) -> list or None:
@@ -250,6 +253,7 @@ def okjiten_cache(kanji: str = None,
 
 
 
+@calculate_time
 def okjiten_etymology(kanji_set: list) -> list:
     """
     Usage: okjiten_etymology(extract_kanji(sample_vocab))

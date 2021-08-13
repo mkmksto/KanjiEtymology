@@ -5,7 +5,7 @@
 from .consts import LABEL_PROGRESS_UPDATE, LABEL_MENU
 from .config import config
 
-from .utils import extract_kanji, download_image
+from .utils import extract_kanji, download_image, calculate_time_class_method
 from .online_dictionaries import okjiten_etymology
 
 from PyQt5.QtWidgets import *
@@ -76,6 +76,7 @@ class Regen:
             return
 
 
+    @calculate_time_class_method
     def generate(self):
         """
         Generate Kanji Etymology strings
