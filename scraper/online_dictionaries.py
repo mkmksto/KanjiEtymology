@@ -361,8 +361,6 @@ def okjiten_etymology(kanji_set: list) -> list:
                     kanji_soup = table.find('td', attrs={'height': 100} )
                     if kanji_soup: break
 
-                if not kanji_soup: continue
-
                 etymology_image_src             = kanji_soup.find('img')
                 try:
                     etymology_image_src         = etymology_image_src.get('src')
