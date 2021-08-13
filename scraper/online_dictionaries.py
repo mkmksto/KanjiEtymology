@@ -297,7 +297,9 @@ def okjiten_etymology(kanji_set: list) -> list:
         # checks that cache isn't empty and that all cache items have a value
         # if at least one key doesn't have a value, the program will continue in order
         # for the cache to be updated
-        if cache is not None and all(cache.values()):
+
+        # if len != 9, then some info might be missing so update the missing info
+        if cache is not None and all(cache.values()) and len(cache) == 9:
             indiv_kanji_info = cache
             result_list.append(indiv_kanji_info)
             continue
@@ -309,7 +311,8 @@ def okjiten_etymology(kanji_set: list) -> list:
 
         for site in sites:
 
-            site = cache.get('scraped_from') or site
+            try: site = cache.get('scraped_from')
+            except AttributeError: pass
 
             response = ''
             response = try_access_site(site)
@@ -319,7 +322,7 @@ def okjiten_etymology(kanji_set: list) -> list:
             if kanji in str(soup) and soup:
 
                 indiv_kanji_info['kanji']       = kanji
-                indiv_kanji_info['definition']  = cache.get('definition') or (tangorin_kanji_info(kanji))
+                indiv_kanji_info['definition']  = cache.get('definition') if cache else (tangorin_kanji_info(kanji))
                 # very important: add the site if it matched, this way, the next time this func runs
                 # we won't have to run through all 3 sites just to get to the kanji
                 indiv_kanji_info['scraped_from'] = site
@@ -336,6 +339,7 @@ def okjiten_etymology(kanji_set: list) -> list:
                     continue
                 if href:
                     href    = 'https://okjiten.jp/{}'.format(href)
+                    indiv_kanji_info['actual_page'] = href
                 else:
                     continue
 
@@ -392,7 +396,10 @@ def okjiten_etymology(kanji_set: list) -> list:
 
                 def_text = ''
 
-                if not cache.get('etymology_text'):
+                try: etymology_text_cache = cache.get('etymology_text')
+                except AttributeError: etymology_text_cache = None
+
+                if not etymology_text_cache:
                     main_body = tables[2]
                     th = main_body.find('th', attrs={'align': 'left'})
 
@@ -433,7 +440,7 @@ def okjiten_etymology(kanji_set: list) -> list:
                                 etymology   = etymology.replace('※', '<br>')  # for anki
                                 def_text    += etymology
 
-                indiv_kanji_info['etymology_text']  = def_text or cache.get('etymology_text')
+                indiv_kanji_info['etymology_text']  = def_text or etymology_text_cache
                 indiv_kanji_info['src']             = 'okijiten'
                 ### ------------------------ END (2) ------------------------
 
@@ -451,6 +458,16 @@ def okjiten_etymology(kanji_set: list) -> list:
                     okjiten_cache(kanji=kanji,
                                   kanji_info_to_save=indiv_kanji_info,
                                   save_to_dict=True)
+                elif cache and len(cache) != len(indiv_kanji_info):
+                    okjiten_cache(kanji=kanji,
+                                  kanji_info_to_save=indiv_kanji_info,
+                                  save_to_dict=True)
+                elif cache and any(cache[key] != indiv_kanji_info[key]
+                                   for key, value in indiv_kanji_info.items()):
+                    okjiten_cache(kanji=kanji,
+                                  kanji_info_to_save=indiv_kanji_info,
+                                  save_to_dict=True)
+
                 break
 
     # print(result_dict['online_img_url'])

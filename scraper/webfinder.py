@@ -5,7 +5,7 @@
 from .consts import LABEL_PROGRESS_UPDATE, LABEL_MENU
 from .config import config
 
-from .utils import extract_kanji, download_image, calculate_time_class_method
+from .utils import extract_kanji, download_image, calculate_time_class_method, speed_logger
 from .online_dictionaries import okjiten_etymology
 
 from PyQt5.QtWidgets import *
@@ -188,6 +188,7 @@ class Regen:
             # just a fail-safe
             if self.completed >= len(self.fids):
                 mw.progress.finish()
+                speed_logger.info('----------------------------------------\n')
                 showInfo('Extraction done for {} out of {} notes done'.format(
                                                                         self.completed,
                                                                         len(self.fids)

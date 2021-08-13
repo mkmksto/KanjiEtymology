@@ -23,7 +23,8 @@ import os
 from aqt import mw
 
 
-FORMAT = logging.Formatter('%(levelname)s \t| %(asctime)s: \t%(message)s')
+FORMAT = logging.Formatter('%(levelname)s \t| %(asctime)s: \t%(message)s',
+                           '%Y-%m-%d %I:%M:%S %p')
 
 
 def setup_logger(name, log_file, _format=FORMAT, level=logging.DEBUG):
