@@ -92,35 +92,48 @@ class Regen:
             if __name__ != '__main__':
                 # empty vocab field
                 if not f[vocab_field]:
-                    # self._update_progress()
+                    self._update_progress()
                     continue
             else:
                 # vocab = f['vocab_field']
                 pass
 
 
-            vocab = str(f[vocab_field])
+            vocab = f[vocab_field]
+            if vocab:
+                vocab = str(vocab)
+                kanji_only = extract_kanji(vocab)
+            else:
+                self._update_progress()
+                continue
 
-            # etymology = dong_etymology(extract_kanji(vocab))
+            if kanji_only:
+                etym_info_list = okjiten_etymology(kanji_only)
+            else:
+                self._update_progress()
+                continue
 
-            etym_info_list = okjiten_etymology(extract_kanji(vocab))
+            if not etym_info_list:
+                self._update_progress()
+                continue
 
             okjiten_str = ''
 
             for index, etym_info in enumerate(etym_info_list, start=1):
-                kanji           = etym_info['kanji']
-                definition      = etym_info['definition']
-                etymology_text  = etym_info['etymology_text']
-                anki_img_url    = etym_info['anki_img_url']
-                online_img_url  = etym_info['online_img_url']
+                etym_info: dict
+                kanji           = etym_info.get('kanji')
+                definition      = etym_info.get('definition')
+                etymology_text  = etym_info.get('etymology_text')
+                anki_img_url    = etym_info.get('anki_img_url')
+                online_img_url  = etym_info.get('online_img_url')
 
                 try:
-                    src = etym_info['src']
+                    src = etym_info.get('src')
                     LABEL_PROGRESS_UPDATE = '{} from {}'.format(LABEL_PROGRESS_UPDATE, src)
                 except:
                     pass
 
-                image_filename  = etym_info['image_filename']
+                image_filename  = etym_info.get('image_filename')
 
                 kanji_and_def = '{}({})'.format(kanji, definition)
 

@@ -120,7 +120,7 @@ def open_log_file(path):
         os.startfile(path)
 
 
-def extract_kanji(text: str) -> list:
+def extract_kanji(text: str) -> list or None:
     """
     returns a unique set/list of Kanji extracted from the vocab
     also removes latin and hiragana text
@@ -132,7 +132,7 @@ def extract_kanji(text: str) -> list:
         kanji_only_set = ''.join(kanji_only_set)
         return list(OrderedDict.fromkeys(kanji_only_set))
     else:
-        return []
+        return None
 
 
 def try_access_site(site, sleep_time=0.08, num_retries=10):

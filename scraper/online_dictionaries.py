@@ -16,18 +16,29 @@ import urllib.parse
 import json
 import os
 
-def tangorin_kanji_info(kanji: str):
+def tangorin_kanji_info(kanji: str) -> str:
     """
     Usage:
         To be used inside okjiten_etymology
     Args:
         Takes in a single kanji ONLY, not a list
+    Returns:
+        str: The english definition for the specified Kanji
     """
     response = try_access_site(site='https://tangorin.com/kanji?search={}'
                                .format(urllib.parse.quote(kanji.encode('utf-8'))))
-    soup = BeautifulSoup(response, features='html.parser')
-    en_definitions = soup.find('p', attrs={'class':  'k-meanings'})
-    en_definitions = en_definitions.get_text().strip()
+    if response:
+        soup = BeautifulSoup(response, features='html.parser')
+    else:
+        return ''
+    if soup:
+        en_definitions = soup.find('p', attrs={'class':  'k-meanings'})
+    else:
+        return ''
+    if en_definitions:
+        en_definitions = en_definitions.get_text().strip()
+    else:
+        return ''
 
     try:
         en_definitions = en_definitions.split('; ')
@@ -40,8 +51,7 @@ def tangorin_kanji_info(kanji: str):
     except:
         pass
 
-    if not en_definitions: en_definitions = ''
-    return en_definitions
+    return en_definitions if en_definitions else ''
 
 
 def dong_etymology(kanji_set):
@@ -310,21 +320,34 @@ def okjiten_etymology(kanji_set: list) -> list:
                 ### (1) scrape the 成り立ち image table
 
                 found       = soup.find('a', text=kanji)
-                href        = found.get('href') # returns a str
-                href        = 'https://okjiten.jp/{}'.format(href)
+                if found:
+                    href    = found.get('href') # returns a str
+                else:
+                    continue
+                if href:
+                    href    = 'https://okjiten.jp/{}'.format(href)
+                else:
+                    continue
 
-                kanji_page  = try_access_site(href)
-                kanji_soup  = BeautifulSoup(kanji_page, features='html.parser')
+                kanji_page = try_access_site(href)
+                if kanji_page:
+                    kanji_soup = BeautifulSoup(kanji_page, features='html.parser')
+                else:
+                    continue
 
                 # https://github.com/rgamici/anki_plugin_jaja_definitions/blob/master/__init__.py#L86
                 # https://beautiful-soup-4.readthedocs.io/en/latest/
                 # tables will be reused in the other scrapers
-                TABLES = kanji_soup.find_all('td', attrs={'colspan': 12} )
+                tables = kanji_soup.find_all('td', attrs={'colspan': 12} )
+
+                if not tables: continue
 
                 # len(TABLES) == 3 ALWAYS!
-                for table in TABLES:
+                for table in tables:
                     kanji_soup = table.find('td', attrs={'height': 100} )
                     if kanji_soup: break
+
+                if not kanji_soup: continue
 
                 etymology_image_src             = kanji_soup.find('img')
                 try:
@@ -353,7 +376,7 @@ def okjiten_etymology(kanji_set: list) -> list:
                 # do a findall and the etym text is always the 3rd table row from the top, etc., this is always the same
                 # the 3rd table - TABLES[2] always contains the main content
 
-                main_body = TABLES[2]
+                main_body = tables[2]
                 th = main_body.find('th', attrs={'align': 'left'})
 
                 def_text = ''
