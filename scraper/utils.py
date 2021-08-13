@@ -91,8 +91,16 @@ def calculate_time(f):
         before = time.time()
         result = f(*args, **kwargs)
         elapsed = time.time() - before
-        speed_logger.info('function "{}" took {} seconds | self = {}'
-                          .format(f.__name__, elapsed, str(args)))
+
+        result_for_log = ''
+        if result:
+            if isinstance(result, (str, list, dict)):
+                result_for_log = str(result)
+                if len(result_for_log) > 100:
+                    result_for_log = result_for_log[:100]
+
+        speed_logger.info('function "{}" took {} seconds \t| args = {} \t| result: {}'
+                          .format(f.__name__, elapsed, str(args), result_for_log))
         return result
     return wrap
 
@@ -180,6 +188,7 @@ def bs_remove_html(html):
     return ' '.join(soup.stripped_strings)
 
 
+@calculate_time
 def download_image(online_url, filename, use_inside_anki=True):
     """
     https://stackoverflow.com/questions/37158246/how-to-download-images-from-beautifulsoup

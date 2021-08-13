@@ -170,7 +170,7 @@ def dong_etymology(kanji_set):
 @calculate_time
 def okjiten_cache(kanji: str = None,
                   kanji_info_to_save: dict = None,
-                  save_to_dict = False) -> list or None:
+                  save_to_dict = False) -> dict or None:
     """
     JSON dict cache
 
@@ -293,8 +293,11 @@ def okjiten_etymology(kanji_set: list) -> list:
     for kanji in kanji_set:
         indiv_kanji_info = dict()
 
-        cache = okjiten_cache(kanji, save_to_dict=False)
-        if cache is not None:
+        cache: dict = okjiten_cache(kanji, save_to_dict=False)
+        # checks that cache isn't empty and that all cache items have a value
+        # if at least one key doesn't have a value, the program will continue in order
+        # for the cache to be updated
+        if cache is not None and all(cache.values()):
             indiv_kanji_info = cache
             result_list.append(indiv_kanji_info)
             continue
@@ -306,22 +309,25 @@ def okjiten_etymology(kanji_set: list) -> list:
 
         for site in sites:
 
+            site = cache.get('scraped_from') or site
+
             response = ''
             response = try_access_site(site)
+            if not response: continue
 
             soup = BeautifulSoup(response, features='html.parser')
             if kanji in str(soup) and soup:
-                print('found {} from {}'.format(kanji, site))
 
                 indiv_kanji_info['kanji']       = kanji
-                indiv_kanji_info['definition']  = (tangorin_kanji_info(kanji))
+                indiv_kanji_info['definition']  = cache.get('definition') or (tangorin_kanji_info(kanji))
+                # very important: add the site if it matched, this way, the next time this func runs
+                # we won't have to run through all 3 sites just to get to the kanji
+                indiv_kanji_info['scraped_from'] = site
 
                 # for some stupid reason, it can't match for kanji like 参, but will match its kyuujitai 參
                 # TODO, if exception, try searching for its kyuujitai counterpart, look for a website that does that
                 # or might be nvm because for some reason it werks now
 
-                ### ------------------------ START (1) ------------------------
-                ### (1) scrape the 成り立ち image table
 
                 found       = soup.find('a', text=kanji)
                 if found:
@@ -339,12 +345,16 @@ def okjiten_etymology(kanji_set: list) -> list:
                 else:
                     continue
 
-                # https://github.com/rgamici/anki_plugin_jaja_definitions/blob/master/__init__.py#L86
-                # https://beautiful-soup-4.readthedocs.io/en/latest/
-                # tables will be reused in the other scrapers
                 tables = kanji_soup.find_all('td', attrs={'colspan': 12} )
 
                 if not tables: continue
+
+                ### ------------------------ START (1) ------------------------
+                ### (1) scrape the 成り立ち image table
+
+                # https://github.com/rgamici/anki_plugin_jaja_definitions/blob/master/__init__.py#L86
+                # https://beautiful-soup-4.readthedocs.io/en/latest/
+                # tables will be reused in the other scrapers
 
                 # len(TABLES) == 3 ALWAYS!
                 for table in tables:
@@ -359,18 +369,20 @@ def okjiten_etymology(kanji_set: list) -> list:
                 # AttributeError: 'NoneType' object has no attribute 'get'
                 except Exception as e:
                     etymology_image_src         = ''
-                etymology_image_url             = 'https://okjiten.jp/{}'.format(etymology_image_src)
 
-                # use image_filename for downloading and storing the media
-                # add _ before img filename before anki keeps deleting these GIFs
-                # could be because I use them inside a JS script
-                image_filename                  = '_okijiten-{}'.format(etymology_image_src)
-                anki_image_src                  = '<img src = "{}">'.format(image_filename)
+                if etymology_image_src:
+                    etymology_image_url             = 'https://okjiten.jp/{}'.format(etymology_image_src)
 
-                indiv_kanji_info['image_filename']      = image_filename
-                indiv_kanji_info['online_img_url']      = etymology_image_url
-                indiv_kanji_info['anki_img_url']        = anki_image_src
-                # download_image(online_url=etymology_image_url, filename=image_filename)
+                    # use image_filename for downloading and storing the media
+                    # add _ before img filename before anki keeps deleting these GIFs
+                    # could be because I use them inside a JS script
+                    image_filename                  = '_okijiten-{}'.format(etymology_image_src)
+                    anki_image_src                  = '<img src = "{}">'.format(image_filename)
+
+                    indiv_kanji_info['image_filename']      = image_filename
+                    indiv_kanji_info['online_img_url']      = etymology_image_url
+                    indiv_kanji_info['anki_img_url']        = anki_image_src
+
                 ### ------------------------ END (1) ------------------------
                 # TODO: scrape the image and put it inside the media folder, try to resize it if u can
 
@@ -380,48 +392,50 @@ def okjiten_etymology(kanji_set: list) -> list:
                 # do a findall and the etym text is always the 3rd table row from the top, etc., this is always the same
                 # the 3rd table - TABLES[2] always contains the main content
 
-                main_body = tables[2]
-                th = main_body.find('th', attrs={'align': 'left'})
-
                 def_text = ''
-                if th:
-                    th          = BeautifulSoup(str(th), features='html.parser')
-                    etymology   = th.get_text().strip()
-                    etymology   = ''.join(etymology.split())
-                    etymology   = etymology.replace('※', '<br>') # for anki
 
-                    def_text    += etymology
+                if not cache.get('etymology_text'):
+                    main_body = tables[2]
+                    th = main_body.find('th', attrs={'align': 'left'})
 
-                else:
-                    # there are cases where len(th)==0, usually it uses a td instead of a th
-                    # sample: https://okjiten.jp/kanji1408.html(脅)
-                    # in such cases, just go through every tr, and find what is relevant
+                    if th:
+                        th          = BeautifulSoup(str(th), features='html.parser')
+                        etymology   = th.get_text().strip()
+                        etymology   = ''.join(etymology.split())
+                        etymology   = etymology.replace('※', '<br>') # for anki
 
-                    # http://nihongo.monash.edu/kanjitypes.html (6 kanji types) (only 4 are on the site)
-                    kanji_class = [
-                        '象形文字',  # pictographs/hieroglyphs
-                        '指事文字',  # "logograms", "simple ideographs", representation of abstract ideas
-                        '会意文字',  # compound ideograph e.g. 休 (rest) from 人 (person) and 木 (tree
-                        '会意兼形声文字',  # compound ideo + phono-semantic at the same time
-                        '形声文字',  # semasio-phonetic"
-                        '国字' ]  # check last, not usually found at the start of the sentence, but inside
+                        def_text    += etymology
+
+                    else:
+                        # there are cases where len(th)==0, usually it uses a td instead of a th
+                        # sample: https://okjiten.jp/kanji1408.html(脅)
+                        # in such cases, just go through every tr, and find what is relevant
+
+                        # http://nihongo.monash.edu/kanjitypes.html (6 kanji types) (only 4 are on the site)
+                        kanji_class = [
+                            '象形文字',  # pictographs/hieroglyphs
+                            '指事文字',  # "logograms", "simple ideographs", representation of abstract ideas
+                            '会意文字',  # compound ideograph e.g. 休 (rest) from 人 (person) and 木 (tree
+                            '会意兼形声文字',  # compound ideo + phono-semantic at the same time
+                            '形声文字',  # semasio-phonetic"
+                            '国字' ]  # check last, not usually found at the start of the sentence, but inside
 
 
-                    tr = main_body.find_all('tr')
-                    # tr[7] is usually the .gif for the etymology image, tr[8] is etymology text
+                        tr = main_body.find_all('tr')
+                        # tr[7] is usually the .gif for the etymology image, tr[8] is etymology text
 
-                    if tr:
-                        etymology = tr[8]
+                        if tr:
+                            etymology = tr[8]
 
-                        etymology = BeautifulSoup(str(etymology), features='html.parser')
-                        etymology = etymology.get_text().strip()
+                            etymology = BeautifulSoup(str(etymology), features='html.parser')
+                            etymology = etymology.get_text().strip()
 
-                        if any(class_ in etymology for class_ in kanji_class):
-                            etymology   = ''.join(etymology.split())
-                            etymology   = etymology.replace('※', '<br>')  # for anki
-                            def_text    += etymology
+                            if etymology and any(class_ in etymology for class_ in kanji_class):
+                                etymology   = ''.join(etymology.split())
+                                etymology   = etymology.replace('※', '<br>')  # for anki
+                                def_text    += etymology
 
-                indiv_kanji_info['etymology_text']  = def_text
+                indiv_kanji_info['etymology_text']  = def_text or cache.get('etymology_text')
                 indiv_kanji_info['src']             = 'okijiten'
                 ### ------------------------ END (2) ------------------------
 

@@ -138,7 +138,8 @@ class Regen:
 
                 kanji_and_def = '{}({})'.format(kanji, definition)
 
-                download_image(online_img_url, image_filename)
+                if online_img_url and image_filename:
+                    download_image(online_img_url, image_filename)
 
                 # use <pseudo-newline> for JS-splitting inside anki because I already use <br> inside
                 # etymology_text  = etym_info['etymology_text'] to replace the character '※'
