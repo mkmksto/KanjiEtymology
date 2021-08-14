@@ -251,7 +251,10 @@ def okjiten_cache(kanji: str = None,
                     cache: dict = json.load(fh)
 
                     result = cache.get(kanji)
-                    return result if result else None
+                    if result:
+                        return result
+                    else:
+                        return None
 
                 except json.decoder.JSONDecodeError:
                     return None
@@ -332,7 +335,9 @@ def okjiten_etymology(kanji_set: list) -> list:
                 try: definition_cache = cache.get('definition') if cache else ''
                 except AttributeError: definition_cache = ''
                 if not definition_cache: definition_cache = tangorin_kanji_info(kanji)
-                if not definition_cache: definition_cache = offline_kanji_info(kanji).get('meaning')
+                if not definition_cache:
+                    definition_cache = offline_kanji_info(kanji)
+                    definition_cache = definition_cache.get('meaning', '')
 
                 indiv_kanji_info['definition']  = definition_cache or ''
 

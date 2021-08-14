@@ -13,7 +13,7 @@ This module requires KanjiEater's GoldenDict add-on
 This module uses monkey patched AnkiConnect methods from said addon
 """
 
-from .utils import calculate_time
+# from .utils import calculate_time
 
 import json
 import urllib.request
@@ -44,7 +44,7 @@ decks = ['全集Deck::01_All_in_One_Kanji',
 lookalikes = '全集Deck::04_Kanji_lookalikes'
 
 
-@calculate_time
+# @calculate_time
 def offline_kanji_info(kanji: str) -> dict:
     """
     Cross-Profile query for Kanji Info
@@ -95,12 +95,13 @@ def offline_kanji_info(kanji: str) -> dict:
 
 
 if __name__ == '__main__':
-    sample_vocab = '蛆' #紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
-    # vocab = '蛆結相'
-    # from pprint import pprint
+    # sample_vocab = '蛆' #紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+    vocab = '蛆結相'
+    from pprint import pprint
 
     # result = invoke('goldenCardsInfo', query=f'deck:{deck} kanji:*{sample_vocab}*', desiredFields='kanji meaning')
     # for v in vocab:
-    #     pprint(offline_kanji_info(v))
+    #     pprint(offline_kanji_info(v).get('meaning'))
+    #     print(type(v))
 
     # offline_kanji_info(sample_vocab)
