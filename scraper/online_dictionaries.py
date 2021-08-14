@@ -7,6 +7,7 @@ Online dictionaries and their respective JSON cache methods (if there are any)
 """
 
 from .utils import try_access_site, calculate_time
+from .offline_dictionaries import offline_kanji_info
 from .config import config
 
 from bs4 import BeautifulSoup
@@ -27,7 +28,8 @@ def tangorin_kanji_info(kanji: str) -> str:
         str: The english definition for the specified Kanji
     """
     response = try_access_site(site='https://tangorin.com/kanji?search={}'
-                               .format(urllib.parse.quote(kanji.encode('utf-8'))))
+                               .format(urllib.parse.quote(kanji.encode('utf-8'))),
+                               wait_time=10.0)
     if response:
         soup = BeautifulSoup(response, features='html.parser')
     else:
@@ -324,11 +326,15 @@ def okjiten_etymology(kanji_set: list) -> list:
             soup = BeautifulSoup(response, features='html.parser')
             if kanji in str(soup) and soup:
 
-                indiv_kanji_info['kanji']       = kanji
+                indiv_kanji_info['kanji'] = kanji
 
+                definition_cache = ''
                 try: definition_cache = cache.get('definition') if cache else ''
                 except AttributeError: definition_cache = ''
-                indiv_kanji_info['definition']  = definition_cache if cache else (tangorin_kanji_info(kanji))
+                if not definition_cache: definition_cache = tangorin_kanji_info(kanji)
+                if not definition_cache: definition_cache = offline_kanji_info(kanji).get('meaning')
+
+                indiv_kanji_info['definition']  = definition_cache or ''
 
                 # very important: add the site if it matched, this way, the next time this func runs
                 # we won't have to run through all 3 sites just to get to the kanji
@@ -339,23 +345,21 @@ def okjiten_etymology(kanji_set: list) -> list:
                 # or might be nvm because for some reason it werks now
 
                 found = None
-                try: href = cache.get('actual_page')
-                except AttributeError: found = soup.find('a', text=kanji)
-
-                if found:
-                    href = found.get('href') # returns a str
+                try:
+                    href = cache.get('actual_page')
+                except AttributeError:
+                    found = soup.find('a', text=kanji)
+                    if found: href = found.get('href') # returns a str
+                if not href: continue
 
                 href = 'https://okjiten.jp/{}'.format(href)
                 indiv_kanji_info['actual_page'] = href
 
                 kanji_page = try_access_site(href)
-                if kanji_page:
-                    kanji_soup = BeautifulSoup(kanji_page, features='html.parser')
-                else:
-                    continue
+                if kanji_page: kanji_soup = BeautifulSoup(kanji_page, features='html.parser')
+                else: continue
 
                 tables = kanji_soup.find_all('td', attrs={'colspan': 12} )
-
                 if not tables: continue
 
                 ### ------------------------ START (1) ------------------------
@@ -398,6 +402,7 @@ def okjiten_etymology(kanji_set: list) -> list:
 
                 def_text = ''
 
+                etymology_text_cache = ''
                 try: etymology_text_cache = cache.get('etymology_text')
                 except AttributeError: etymology_text_cache = ''
 
