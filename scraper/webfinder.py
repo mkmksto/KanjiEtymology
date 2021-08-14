@@ -188,7 +188,7 @@ class Regen:
             # just a fail-safe
             if self.completed >= len(self.fids):
                 mw.progress.finish()
-                speed_logger.info('----------------------------------------\n')
+                speed_logger.info('----------------------------------------')
                 showInfo('Extraction done for {} out of {} notes done'.format(
                                                                         self.completed,
                                                                         len(self.fids)
@@ -221,10 +221,13 @@ def on_regen_vocab(ed):
     """
     main function
     """
+
+    speed_logger.info('\n---------------START------------------')
     regen = Regen(ed, ed.selectedNotes())
     regen.generate()
     mw.reset()
     mw.requireReset()
+    speed_logger.info('-----------------END--------------------\n')
 
 addHook('browser.setupMenus', setup_menu)
 addHook('browser.onContextMenu', add_to_context_menu)

@@ -214,15 +214,18 @@ def okjiten_cache(kanji: str = None,
 
     # (mode 2)
     if save_to_dict:
-        json_formatted_info = {
-            kanji: kanji_info_to_save
-        }
+        # json_formatted_info = {
+        #     kanji: kanji_info_to_save
+        # }
 
         # https://stackoverflow.com/questions/18980039/how-to-append-in-a-json-file-in-python
         with open(full_path, 'r', encoding='utf8') as fh:
             data: dict = json.load(fh)
 
-        data.update(json_formatted_info)
+        # https://www.programiz.com/python-programming/methods/dictionary/update
+        # https://stackoverflow.com/questions/29694826/updating-a-dictionary-in-python
+        # you can use a tuple to update a dict with key-val pairs
+        data.update( (kanji, kanji_info_to_save) )
 
         # https://stackoverflow.com/questions/18337407/saving-utf-8-texts-with-json-dumps-as-utf8-not-as-u-escape-sequence
         with open(full_path, 'w', encoding='utf8') as fh:
@@ -300,19 +303,17 @@ def okjiten_etymology(kanji_set: list) -> list:
 
         # if len != 9, then some info might be missing so update the missing info
         if cache is not None and all(cache.values()) and len(cache) == 9:
-            indiv_kanji_info = cache
-            result_list.append(indiv_kanji_info)
+            result_list.append(cache)
             continue
 
-        sites= [
-            'https://okjiten.jp/10-jyouyoukanjiitiran.html',
-            'https://okjiten.jp/8-jouyoukanjigai.html', # (kanken pre-1 and 1)
-            'https://okjiten.jp/9-jinmeiyoukanji.html']
+        sites= ['https://okjiten.jp/10-jyouyoukanjiitiran.html',
+                'https://okjiten.jp/8-jouyoukanjigai.html', # (kanken pre-1 and 1)
+                'https://okjiten.jp/9-jinmeiyoukanji.html']
 
         for site in sites:
-
-            try: site = cache.get('scraped_from')
-            except AttributeError: pass
+            original_site = site
+            try: site = cache.get('scraped_from') if cache else original_site
+            except AttributeError: site = original_site
 
             response = ''
             response = try_access_site(site)
@@ -322,7 +323,11 @@ def okjiten_etymology(kanji_set: list) -> list:
             if kanji in str(soup) and soup:
 
                 indiv_kanji_info['kanji']       = kanji
-                indiv_kanji_info['definition']  = cache.get('definition') if cache else (tangorin_kanji_info(kanji))
+
+                try: definition_cache = cache.get('definition') if cache else ''
+                except AttributeError: definition_cache = ''
+                indiv_kanji_info['definition']  = definition_cache if cache else (tangorin_kanji_info(kanji))
+
                 # very important: add the site if it matched, this way, the next time this func runs
                 # we won't have to run through all 3 sites just to get to the kanji
                 indiv_kanji_info['scraped_from'] = site
@@ -397,7 +402,7 @@ def okjiten_etymology(kanji_set: list) -> list:
                 def_text = ''
 
                 try: etymology_text_cache = cache.get('etymology_text')
-                except AttributeError: etymology_text_cache = None
+                except AttributeError: etymology_text_cache = ''
 
                 if not etymology_text_cache:
                     main_body = tables[2]
