@@ -214,9 +214,9 @@ def okjiten_cache(kanji: str = None,
 
     # (mode 2)
     if save_to_dict:
-        # json_formatted_info = {
-        #     kanji: kanji_info_to_save
-        # }
+        json_formatted_info = {
+            kanji: kanji_info_to_save
+        }
 
         # https://stackoverflow.com/questions/18980039/how-to-append-in-a-json-file-in-python
         with open(full_path, 'r', encoding='utf8') as fh:
@@ -225,7 +225,9 @@ def okjiten_cache(kanji: str = None,
         # https://www.programiz.com/python-programming/methods/dictionary/update
         # https://stackoverflow.com/questions/29694826/updating-a-dictionary-in-python
         # you can use a tuple to update a dict with key-val pairs
-        data.update( (kanji, kanji_info_to_save) )
+        try: data.pop(kanji)
+        except KeyError: pass
+        data.update( json_formatted_info )
 
         # https://stackoverflow.com/questions/18337407/saving-utf-8-texts-with-json-dumps-as-utf8-not-as-u-escape-sequence
         with open(full_path, 'w', encoding='utf8') as fh:
@@ -336,17 +338,15 @@ def okjiten_etymology(kanji_set: list) -> list:
                 # TODO, if exception, try searching for its kyuujitai counterpart, look for a website that does that
                 # or might be nvm because for some reason it werks now
 
+                found = None
+                try: href = cache.get('actual_page')
+                except AttributeError: found = soup.find('a', text=kanji)
 
-                found       = soup.find('a', text=kanji)
                 if found:
-                    href    = found.get('href') # returns a str
-                else:
-                    continue
-                if href:
-                    href    = 'https://okjiten.jp/{}'.format(href)
-                    indiv_kanji_info['actual_page'] = href
-                else:
-                    continue
+                    href = found.get('href') # returns a str
+
+                href = 'https://okjiten.jp/{}'.format(href)
+                indiv_kanji_info['actual_page'] = href
 
                 kanji_page = try_access_site(href)
                 if kanji_page:
@@ -370,12 +370,9 @@ def okjiten_etymology(kanji_set: list) -> list:
                     kanji_soup = table.find('td', attrs={'height': 100} )
                     if kanji_soup: break
 
-                etymology_image_src             = kanji_soup.find('img')
-                try:
-                    etymology_image_src         = etymology_image_src.get('src')
-                # AttributeError: 'NoneType' object has no attribute 'get'
-                except Exception as e:
-                    etymology_image_src         = ''
+                etymology_image_src = kanji_soup.find('img')
+                try: etymology_image_src = etymology_image_src.get('src')
+                except AttributeError: etymology_image_src = ''
 
                 if etymology_image_src:
                     etymology_image_url             = 'https://okjiten.jp/{}'.format(etymology_image_src)
@@ -454,9 +451,6 @@ def okjiten_etymology(kanji_set: list) -> list:
                 # TODO
                 ### (4) scrape the 部首 table / usually https://okjiten.jp/{}#c
 
-                # break out for site for sites loop -> if kanji in str(soup) and soup:
-                # because if the kanji is inside the site, no need to go over the other sites
-                # as such this for loop only runs one if the kanji is within the site at first try
                 result_list.append(indiv_kanji_info)
 
                 if cache is None:
@@ -468,20 +462,22 @@ def okjiten_etymology(kanji_set: list) -> list:
                                   kanji_info_to_save=indiv_kanji_info,
                                   save_to_dict=True)
                 elif cache and any(cache[key] != indiv_kanji_info[key]
-                                   for key, value in indiv_kanji_info.items()):
+                                   for key, value in cache.items()):
                     okjiten_cache(kanji=kanji,
                                   kanji_info_to_save=indiv_kanji_info,
                                   save_to_dict=True)
 
+                # break out for site for sites loop -> if kanji in str(soup) and soup:
+                # because if the kanji is inside the site, no need to go over the other sites
+                # as such this for loop only runs one if the kanji is within the site at first try
                 break
 
     # print(result_dict['online_img_url'])
     return result_list
 
-# if __name__ == '__main__':
-#     sample_vocab = '参夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
-#     from pprint import pprint
-    # pprint(okjiten_etymology(extract_kanji(sample_vocab)))
+if __name__ == '__main__':
+    sample_vocab = '参夢紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
+    from pprint import pprint
 
     # fids = [{'vocab_field': '参夢'},{'vocab_field': '紋脅'}]
     # regen = Regen(fids=fids)

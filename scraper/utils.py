@@ -97,11 +97,14 @@ def calculate_time(f):
         if result:
             if isinstance(result, (str, list, dict)):
                 result_for_log = str(result)
-                if len(result_for_log) > 100:
-                    result_for_log = result_for_log[:100]
+                if len(result_for_log) > 200:
+                    result_for_log = result_for_log[:200]
 
-        speed_logger.info('function "{}" took {} seconds \t| args = {} \t| result: {}'
-                          .format(f.__name__, elapsed, str(args), result_for_log))
+        speed_logger.info('function "{}" took {} seconds '
+                          '\t| args: {} '
+                          '\t| kwargs: {} '
+                          '\t| result: {}'
+                          .format(f.__name__, elapsed, str(args), str(kwargs), result_for_log))
         return result
     return wrap
 

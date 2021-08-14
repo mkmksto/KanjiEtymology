@@ -20,6 +20,7 @@ def get_config() -> dict:
     cfg['keybinding']: str              = cfg.get('keybinding', '')
     cfg['update_separator']: str        = cfg.get('update_separator', '<br>')
     cfg['error_tag']: str               = cfg.get('error_tag', 'KanjiEtymError')
+    cfg['cross_profile_name']: str      = cfg.get('cross_profile_name', 'subs2srsss')
 
     cfg['media_debug_folder']: str      = cfg.get('media_debug_folder',
                                                   r'D:\TeMP\1_!_!_!_TEMP\Z_trash_Anki_media')
