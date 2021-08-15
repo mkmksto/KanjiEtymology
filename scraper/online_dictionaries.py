@@ -303,7 +303,7 @@ def okjiten_etymology(kanji_set: list) -> list:
 
     for kanji in kanji_set:
         initial_time = time.time()
-        speed_logger.info(f'--- START (1) K:{kanji} initial time : 0 ---')
+        speed_logger.info(f'--- (1) START K:{kanji} initial time : 0 ---')
 
         indiv_kanji_info = dict()
 
@@ -408,7 +408,7 @@ def okjiten_etymology(kanji_set: list) -> list:
                     indiv_kanji_info['online_img_url']      = etymology_image_url
                     indiv_kanji_info['anki_img_url']        = anki_image_src
 
-                speed_logger.info(f'--- K: {kanji} after (1) scrape the 成り立ち image table'
+                speed_logger.info(f'--- (5) K: {kanji} after scrape the 成り立ち image table'
                                   f' : {round(time.time() - initial_time, 5)} ---')
                 ### ------------------------ END (1) ------------------------
                 # TODO: scrape the image and put it inside the media folder, try to resize it if u can
@@ -469,7 +469,7 @@ def okjiten_etymology(kanji_set: list) -> list:
                 indiv_kanji_info['etymology_text']  = def_text or etymology_text_cache
                 indiv_kanji_info['src']             = 'okijiten'
 
-                speed_logger.info(f'--- after (1) scrape the 成り立ち TEXT table'
+                speed_logger.info(f'--- (6) after scrape the 成り立ち TEXT table'
                                   f' : {round(time.time() - initial_time, 5)} ---')
                 ### ------------------------ END (2) ------------------------
 
@@ -480,6 +480,7 @@ def okjiten_etymology(kanji_set: list) -> list:
 
                 result_list.append(indiv_kanji_info)
 
+                log_bool2 = log_bool3 = False
                 if cache is None:
                     okjiten_cache(kanji=kanji,
                                   kanji_info_to_save=indiv_kanji_info,
@@ -496,7 +497,7 @@ def okjiten_etymology(kanji_set: list) -> list:
                                   kanji_info_to_save=indiv_kanji_info,
                                   save_to_dict=True)
 
-                speed_logger.info(f'--- END: after adding to cache if needed'
+                speed_logger.info(f'--- (7) END: after adding to cache if needed'
                                   f'-- cache exists? : {bool(cache)} --'
                                   f' len(cache) != len(indiv_kanji_info)? : {log_bool2} --'
                                   f' any(cache[key] != indiv_kanji_info[key]?: {log_bool3} --'
