@@ -6,7 +6,7 @@
 Online dictionaries and their respective JSON cache methods (if there are any)
 """
 
-from .utils import try_access_site, calculate_time
+from .utils import try_access_site, calculate_time, speed_logger
 from .offline_dictionaries import offline_kanji_info
 from .config import config
 
@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 
 import urllib.request
 import urllib.parse
+import time
 import json
 import os
 
@@ -301,6 +302,9 @@ def okjiten_etymology(kanji_set: list) -> list:
     result_list = []
 
     for kanji in kanji_set:
+        initial_time = time.time()
+        speed_logger.info(f'--- START (1) K:{kanji} initial time : 0 ---')
+
         indiv_kanji_info = dict()
 
         cache: dict = okjiten_cache(kanji, save_to_dict=False)
@@ -312,6 +316,7 @@ def okjiten_etymology(kanji_set: list) -> list:
         if cache is not None and all(cache.values()) and len(cache) == 9:
             result_list.append(cache)
             continue
+        speed_logger.info(f'--- after cache : {time.time() - initial_time} ---')
 
         sites= ['https://okjiten.jp/10-jyouyoukanjiitiran.html',
                 'https://okjiten.jp/8-jouyoukanjigai.html', # (kanken pre-1 and 1)
@@ -325,6 +330,8 @@ def okjiten_etymology(kanji_set: list) -> list:
             response = ''
             response = try_access_site(site)
             if not response: continue
+            speed_logger.info(f'--- (2) K:{kanji} after response = try_access_site({site})'
+                              f' : {round(time.time() - initial_time, 5)} ---')
 
             soup = BeautifulSoup(response, features='html.parser')
             if kanji in str(soup) and soup:
@@ -345,6 +352,8 @@ def okjiten_etymology(kanji_set: list) -> list:
                 # we won't have to run through all 3 sites just to get to the kanji
                 indiv_kanji_info['scraped_from'] = site
 
+                speed_logger.info(f'--- (3) K: {kanji} after indiv_kanji_info[\'scraped_from\']'
+                                  f' : {round(time.time() - initial_time, 5)} ---')
                 # for some stupid reason, it can't match for kanji like 参, but will match its kyuujitai 參
                 # TODO, if exception, try searching for its kyuujitai counterpart, look for a website that does that
                 # or might be nvm because for some reason it werks now
@@ -363,6 +372,9 @@ def okjiten_etymology(kanji_set: list) -> list:
                 kanji_page = try_access_site(href)
                 if kanji_page: kanji_soup = BeautifulSoup(kanji_page, features='html.parser')
                 else: continue
+
+                speed_logger.info(f'--- (4) K: {kanji} after kanji_page = try_access_site({href})'
+                                  f' : {round(time.time() - initial_time, 5)} ---')
 
                 tables = kanji_soup.find_all('td', attrs={'colspan': 12} )
                 if not tables: continue
@@ -396,6 +408,8 @@ def okjiten_etymology(kanji_set: list) -> list:
                     indiv_kanji_info['online_img_url']      = etymology_image_url
                     indiv_kanji_info['anki_img_url']        = anki_image_src
 
+                speed_logger.info(f'--- K: {kanji} after (1) scrape the 成り立ち image table'
+                                  f' : {round(time.time() - initial_time, 5)} ---')
                 ### ------------------------ END (1) ------------------------
                 # TODO: scrape the image and put it inside the media folder, try to resize it if u can
 
@@ -454,6 +468,9 @@ def okjiten_etymology(kanji_set: list) -> list:
 
                 indiv_kanji_info['etymology_text']  = def_text or etymology_text_cache
                 indiv_kanji_info['src']             = 'okijiten'
+
+                speed_logger.info(f'--- after (1) scrape the 成り立ち TEXT table'
+                                  f' : {round(time.time() - initial_time, 5)} ---')
                 ### ------------------------ END (2) ------------------------
 
                 # TODO
@@ -468,14 +485,22 @@ def okjiten_etymology(kanji_set: list) -> list:
                                   kanji_info_to_save=indiv_kanji_info,
                                   save_to_dict=True)
                 elif cache and len(cache) != len(indiv_kanji_info):
+                    log_bool2 = True
                     okjiten_cache(kanji=kanji,
                                   kanji_info_to_save=indiv_kanji_info,
                                   save_to_dict=True)
                 elif cache and any(cache[key] != indiv_kanji_info[key]
                                    for key, value in cache.items()):
+                    log_bool3 = True
                     okjiten_cache(kanji=kanji,
                                   kanji_info_to_save=indiv_kanji_info,
                                   save_to_dict=True)
+
+                speed_logger.info(f'--- END: after adding to cache if needed'
+                                  f'-- cache exists? : {bool(cache)} --'
+                                  f' len(cache) != len(indiv_kanji_info)? : {log_bool2} --'
+                                  f' any(cache[key] != indiv_kanji_info[key]?: {log_bool3} --'
+                                  f' : {round(time.time() - initial_time, 5)} ---')
 
                 # break out for site for sites loop -> if kanji in str(soup) and soup:
                 # because if the kanji is inside the site, no need to go over the other sites
