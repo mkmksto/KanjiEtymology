@@ -160,14 +160,15 @@ def extract_kanji(text: str) -> list or None:
 def try_access_site(site,
                     sleep_time=0.08,
                     num_retries=3,
-                    wait_time=15.0):
+                    wait_time=15.0,
+                    timeout=5):
 
     initial_time = time.time()
     time_margin = 0.02
 
     response = None
     try:
-        response = urllib.request.urlopen(site, timeout=5)
+        response = urllib.request.urlopen(site, timeout=timeout)
 
     except:
         for i in range(num_retries):
@@ -175,7 +176,7 @@ def try_access_site(site,
             if lapsed_time - initial_time > wait_time: return None
 
             try:
-                response = urllib.request.urlopen(site, timeout=5)
+                response = urllib.request.urlopen(site, timeout=timeout)
             except:
                 # does something like random.uniform(0.06, 0.10)
                 sleep_time = random.uniform(sleep_time - time_margin,

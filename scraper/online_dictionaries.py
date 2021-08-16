@@ -30,7 +30,9 @@ def tangorin_kanji_info(kanji: str) -> str:
     """
     response = try_access_site(site='https://tangorin.com/kanji?search={}'
                                .format(urllib.parse.quote(kanji.encode('utf-8'))),
-                               wait_time=10.0)
+                               num_retries=1,
+                               wait_time=4.0,
+                               timeout=1.5)
     if response:
         soup = BeautifulSoup(response, features='html.parser')
     else:
@@ -341,8 +343,8 @@ def okjiten_etymology(kanji_set: list) -> list:
                 definition_cache = ''
                 try: definition_cache = cache.get('definition') if cache else ''
                 except AttributeError: definition_cache = ''
-                if not definition_cache: definition_cache = kanjidic2_info(kanji)
                 if not definition_cache: definition_cache = tangorin_kanji_info(kanji)
+                if not definition_cache: definition_cache = kanjidic2_info(kanji)
                 if not definition_cache:
                     definition_cache = offline_kanji_info(kanji) or ''
                     if definition_cache: definition_cache = definition_cache.get('meaning', '')
