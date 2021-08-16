@@ -15,8 +15,11 @@ This module uses monkey patched AnkiConnect methods from said addon
 
 # from .utils import calculate_time
 
-import json
+from .config import config
+
 import urllib.request
+import json
+import os
 
 # from foosoft's AnkiConnect sample code
 def request(action, **params):
@@ -94,14 +97,28 @@ def offline_kanji_info(kanji: str) -> dict:
     return kanji_info
 
 
+def kanjidic2_info(kanji: str) -> str:
+    """
+    Only return a single-line English definition str
+    """
+    complete_path = os.path.join(config.get('kanjidic_folder'), config.get('kanjidic_filename'))
+    # complete_path = r'D:\Libraries\Documents\GitHub\KanjiEtymology\scraper\kanji_bank_complete-dict-format.json'
+    with open(complete_path, 'r', encoding='utf8') as fh:
+        data: dict = json.load(fh)
+
+        result = data.get(kanji, '')
+        if result: return result
+
+
 if __name__ == '__main__':
     # sample_vocab = '蛆' #紋脅' #統參参夢紋泥恢疎姿勢'  # 自得だと思わないか' #！夢この前、あの姿勢のまま寝てるの見ましたよ固執流河麻薬所持容疑'
-    vocab = '蛆結相'
+    vocab = '蛆結相遭遇刹那'
     from pprint import pprint
 
     # result = invoke('goldenCardsInfo', query=f'deck:{deck} kanji:*{sample_vocab}*', desiredFields='kanji meaning')
     # for v in vocab:
-    #     pprint(offline_kanji_info(v).get('meaning'))
+        # pprint(offline_kanji_info(v).get('meaning'))
+        # pprint(kanjidic2_info(v))
     #     print(type(v))
 
     # offline_kanji_info(sample_vocab)

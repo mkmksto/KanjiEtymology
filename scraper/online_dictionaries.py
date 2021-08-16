@@ -7,7 +7,7 @@ Online dictionaries and their respective JSON cache methods (if there are any)
 """
 
 from .utils import try_access_site, calculate_time, speed_logger
-from .offline_dictionaries import offline_kanji_info
+from .offline_dictionaries import kanjidic2_info, offline_kanji_info
 from .config import config
 
 from bs4 import BeautifulSoup
@@ -341,10 +341,11 @@ def okjiten_etymology(kanji_set: list) -> list:
                 definition_cache = ''
                 try: definition_cache = cache.get('definition') if cache else ''
                 except AttributeError: definition_cache = ''
+                if not definition_cache: definition_cache = kanjidic2_info(kanji)
                 if not definition_cache: definition_cache = tangorin_kanji_info(kanji)
                 if not definition_cache:
-                    definition_cache = offline_kanji_info(kanji)
-                    definition_cache = definition_cache.get('meaning', '')
+                    definition_cache = offline_kanji_info(kanji) or ''
+                    if definition_cache: definition_cache = definition_cache.get('meaning', '')
 
                 indiv_kanji_info['definition']  = definition_cache or ''
 
