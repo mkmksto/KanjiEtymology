@@ -13,7 +13,7 @@ This module requires KanjiEater's GoldenDict add-on
 This module uses monkey patched AnkiConnect methods from said addon
 """
 
-# from .utils import calculate_time
+from .utils import calculate_time
 
 from .config import config
 
@@ -47,7 +47,7 @@ decks = ['全集Deck::01_All_in_One_Kanji',
 lookalikes = '全集Deck::04_Kanji_lookalikes'
 
 
-# @calculate_time
+@calculate_time
 def offline_kanji_info(kanji: str) -> dict:
     """
     Cross-Profile query for Kanji Info
@@ -97,17 +97,28 @@ def offline_kanji_info(kanji: str) -> dict:
     return kanji_info
 
 
-def kanjidic2_info(kanji: str) -> str:
+@calculate_time
+def kanjidic2_info(kanji: str) -> str or None:
     """
     Only return a single-line English definition str
     """
     complete_path = os.path.join(config.get('kanjidic_folder'), config.get('kanjidic_filename'))
     # complete_path = r'D:\Libraries\Documents\GitHub\KanjiEtymology\scraper\kanji_bank_complete-dict-format.json'
-    with open(complete_path, 'r', encoding='utf8') as fh:
-        data: dict = json.load(fh)
+    if os.path.isfile(complete_path):
+        with open(complete_path, 'r', encoding='utf8') as fh:
+            data: dict = json.load(fh)
 
-        result = data.get(kanji, '')
-        if result: return result
+            result = data.get(kanji, '')
+            if result: return result
+    else:
+        return None
+
+
+# TODO: query the kanjigen JSON file if the kanji isn't listed on okjiten
+@calculate_time
+def kanjigen_info(kanji: str) -> str:
+
+    pass
 
 
 if __name__ == '__main__':
