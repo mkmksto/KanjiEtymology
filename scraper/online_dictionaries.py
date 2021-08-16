@@ -343,8 +343,8 @@ def okjiten_etymology(kanji_set: list) -> list:
                 definition_cache = ''
                 try: definition_cache = cache.get('definition') if cache else ''
                 except AttributeError: definition_cache = ''
-                if not definition_cache: definition_cache = tangorin_kanji_info(kanji)
                 if not definition_cache: definition_cache = kanjidic2_info(kanji)
+                if not definition_cache: definition_cache = tangorin_kanji_info(kanji)
                 if not definition_cache:
                     definition_cache = offline_kanji_info(kanji) or ''
                     if definition_cache: definition_cache = definition_cache.get('meaning', '')
