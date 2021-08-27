@@ -7,6 +7,8 @@ from .config import config
 
 from .utils import extract_kanji, download_image, calculate_time_class_method, speed_logger
 from .online_dictionaries import okjiten_etymology
+from .offline_dictionaries import kanjidic2_info
+from .kanji_mecab import generate_furigana
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -114,39 +116,64 @@ class Regen:
                 self._update_progress()
                 continue
 
-            if not etym_info_list:
+            okjiten_str = ''
+
+            kanji_with_etym = []
+            if etym_info_list:
+                for index, etym_info in enumerate(etym_info_list, start=1):
+                    etym_info: dict
+                    kanji           = etym_info.get('kanji')
+                    kanji_with_etym.append(kanji)
+
+                    definition      = etym_info.get('definition', None)
+                    etymology_text  = etym_info.get('etymology_text')
+                    etymology_text  = generate_furigana(etymology_text)
+                    anki_img_url    = etym_info.get('anki_img_url')
+                    online_img_url  = etym_info.get('online_img_url')
+
+                    try:
+                        src = etym_info.get('src')
+                        LABEL_PROGRESS_UPDATE = '{} from {}'.format(LABEL_PROGRESS_UPDATE, src)
+                    except:
+                        pass
+
+                    image_filename  = etym_info.get('image_filename')
+
+                    kanji_and_def = '{}({})'.format(kanji, definition)
+
+                    if online_img_url and image_filename:
+                        download_image(online_img_url, image_filename)
+
+                    # use <pseudo-newline> for JS-splitting inside anki because I already use <br> inside
+                    # etymology_text  = etym_info['etymology_text'] to replace the character '※'
+                    if index < len(etym_info_list):
+                        okjiten_str += '{} | {} | {}<pseudo-newline>'.format(kanji_and_def, anki_img_url, etymology_text)
+                    elif index == len(etym_info_list):
+                        okjiten_str += '{} | {} | {}'.format(kanji_and_def, anki_img_url, etymology_text)
+
+            found_in_kd2 = False
+            if any([k not in kanji_with_etym for k in kanji_only]):
+                not_found = [k for k in kanji_only if k not in kanji_with_etym]
+                for index, kanji in enumerate(not_found, start=1):
+                    definition = kanjidic2_info(kanji)
+
+                    if definition:
+                        kanji_and_def = '{}({})'.format(kanji, definition)
+                        found_in_kd2 = True
+
+                        if index == 1:
+                            # very important, adds a newline after okjiten etymology
+                            okjiten_str += f'<pseudo-newline>{kanji_and_def} | | '
+                        elif index < len(not_found):
+                            okjiten_str += f'{kanji_and_def} | | <pseudo-newline>'
+                        elif index == len(not_found):
+                            okjiten_str += f'{kanji_and_def} |  | '
+
+
+            if not etym_info_list and not found_in_kd2:
                 self._update_progress()
                 continue
 
-            okjiten_str = ''
-
-            for index, etym_info in enumerate(etym_info_list, start=1):
-                etym_info: dict
-                kanji           = etym_info.get('kanji')
-                definition      = etym_info.get('definition')
-                etymology_text  = etym_info.get('etymology_text')
-                anki_img_url    = etym_info.get('anki_img_url')
-                online_img_url  = etym_info.get('online_img_url')
-
-                try:
-                    src = etym_info.get('src')
-                    LABEL_PROGRESS_UPDATE = '{} from {}'.format(LABEL_PROGRESS_UPDATE, src)
-                except:
-                    pass
-
-                image_filename  = etym_info.get('image_filename')
-
-                kanji_and_def = '{}({})'.format(kanji, definition)
-
-                if online_img_url and image_filename:
-                    download_image(online_img_url, image_filename)
-
-                # use <pseudo-newline> for JS-splitting inside anki because I already use <br> inside
-                # etymology_text  = etym_info['etymology_text'] to replace the character '※'
-                if index < len(etym_info_list):
-                    okjiten_str += '{} | {} | {}<pseudo-newline>'.format(kanji_and_def, anki_img_url, etymology_text)
-                elif index == len(etym_info_list):
-                    okjiten_str += '{} | {} | {}'.format(kanji_and_def, anki_img_url, etymology_text)
 
             okjiten_str = okjiten_str.replace(r'\n', '').strip()
 
