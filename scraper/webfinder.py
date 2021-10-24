@@ -18,11 +18,14 @@ from aqt.utils import showInfo
 from aqt import mw
 
 
+# TODO: Priority 1 - get a list of all kanji available @ okjiten, check that list if the kanji is in the list
+# to avoid long querying times
+# TODO: Priority #2 - change tangorin waiting time (for handling cases such as kyuujitai not being found)
+# TODO: Priority 2.5 try searching KANJIGEN for etym if etym not found in okjiten
 # TODO: better progress dialog lol
 # TODO: empty vocab fields sometimes makes it crash
 # TODO: doesn't handle 'https://www.dong-chinese.com/dictionary/search/%E8%81%B4', i.e. Japanese variant
 # TODO: kanji decomposition tool (https://characterpop.com/) better: https://hanzicraft.com/character/%E5%AE%89
-# TODO: (VERY IMP) priority = 2 create a JSON cache file, where before querying, the program checks if it already exists
 # inside the json file, if it does exist, skip the URL queries and copy from the JSON file instead
 # the first value should be the site/source, if the kanji and site match -> then skip, if the kanji is found
 # but the site is diff, then still continue with the query then save the result inside the JSON file
